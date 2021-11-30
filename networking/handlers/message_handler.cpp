@@ -1,7 +1,7 @@
 /*
  * Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
  * Autor: Guilherme Araujo Thomaz
- * Data da ultima modificacao: 19/11/2021
+ * Data da ultima modificacao: 30/11/2021
  * Descricao: interface de alto nivel para funcionalidades de envio
  * e recepcao de mensagens entre cliente e servidor.
  * 
@@ -44,9 +44,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <iostream>
 #include "message_handler.h"
 #include "request_register.h"
-
+#include "config_macros.h"
+#include HTTPLIB_PATH
 
 // Used to send requests to the service provider sample.  It
 // simulates network communication between the ISV app and the
@@ -73,10 +75,47 @@ int ra_network_send_receive(const char *client_url,
         return -1;
     }
 
+    httplib::Client cli(SERVER_URL, COMUNICATION_PORT);
+    //httplib::Error cli_err;
+
+    char* body;
+    uint32_t byte_length;
+    byte_length = p_req->size / sizeof(uint8_t); 
+    body = (char*)malloc((1+(byte_length*2))*sizeof(char));
+    char auxiliary_string[3];
+    for (uint32_t i=0; i<byte_length; i++){
+        sprintf(auxiliary_string,"%02x",p_req->body[i]);
+        body[2*i] = auxiliary_string[0];
+        body[2*i+1] = auxiliary_string[1];
+    }
+    body[2*byte_length] = '\0';
+
+    char* http_code = (char*)malloc(URL_MAX_SIZE*sizeof(char));
+    sprintf(http_code, "/attest/type=%02x&size=%02x&align=%02x%02x%02x&body=%s", 
+                                                                p_req->type,
+                                                                p_req->size, 
+                                                                p_req->align[0],
+                                                                p_req->align[1],
+                                                                p_req->align[2],
+                                                                body);
+    free(body);
+    fprintf(stdout,"%s\n",http_code);
+
+    if (auto res = cli.Get(http_code)){
+        if (res->status == 200) {
+            // fprintf(stdout, "Response: %s\n", res->body);
+            std::cout << res->body << std::endl;
+        } 
+    } else {
+        fprintf(stdout, "HTTP Error: %d", (int)res.error());
+    }
+    free(http_code);
+
+    // Modelo antigo
     switch(p_req->type)
     {
-
     case TYPE_RA_MSG0:
+        
         ret = sp_ra_proc_msg0_req((const sample_ra_msg0_t*)((size_t)p_req
             + sizeof(ra_samp_request_header_t)),
             p_req->size,
@@ -93,6 +132,7 @@ int ra_network_send_receive(const char *client_url,
         break;
 
     case TYPE_RA_MSG1:
+
         ret = sp_ra_proc_msg1_req((const sample_ra_msg1_t*)((size_t)p_req
             + sizeof(ra_samp_request_header_t)),
             p_req->size,
@@ -109,6 +149,7 @@ int ra_network_send_receive(const char *client_url,
         break;
 
     case TYPE_RA_MSG3:
+
         ret =sp_ra_proc_msg3_req((const sample_ra_msg3_t*)((size_t)p_req +
             sizeof(ra_samp_request_header_t)),
             p_req->size,

@@ -1,7 +1,7 @@
 /*
  * Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
  * Autor: Guilherme Araujo Thomaz
- * Data da ultima modificacao: 16/11/2021
+ * Data da ultima modificacao: 22/11/2021
  * Descricao: interface de alto nivel para funcionalidades de envio
  * e recepcao de mensagens entre cliente e servidor.
  * 
@@ -89,6 +89,9 @@ typedef struct _ra_samp_response_header_t{
     uint8_t  body[];
 }ra_samp_response_header_t;
 
+typedef ra_samp_response_header_t client_to_server_t;
+typedef ra_samp_request_header_t server_to_client_t;
+
 #pragma pack()
 
 #ifdef  __cplusplus
@@ -100,19 +103,7 @@ int ra_network_send_receive(const char *client_url,
                             ra_samp_response_header_t **p_resp);
 void ra_free_network_response_buffer(ra_samp_response_header_t *resp);
 
-int client_send_receive(const char *client_url,
-                        const char *server_url,
-                        ra_samp_response_header_t **p_req,
-                        const ra_samp_request_header_t *resp);
-
-int server_wait_request(const char *client_url,
-                        const char *server_url,
-                        ra_samp_response_header_t **p_resp);
-
-int server_send_receive(const char *client_url,
-                        const char *server_url,
-                        const ra_samp_request_header_t *req,
-                        ra_samp_response_header_t **p_resp);
+//int unmarshall_
 
 #ifdef  __cplusplus
 }

@@ -118,7 +118,7 @@ endif
 Server_Cpp_Flags := $(Server_C_Flags)
 Server_Link_Flags := -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -lclient -L. -lsgx_ukey_exchange -lpthread \
 					 -Lserver/server_app -Wl,-rpath=$(CURDIR)/client/sample_libcrypto -Wl,-rpath=$(CURDIR) -Lserver/utils \
-					 -LIAS -Lclient/client_app -Lclient/sample_libcrypto -Lclient/ecp
+					 -LIAS -Lclient/client_app -Lclient/sample_libcrypto -Lclient/ecp -pthread
 
 ifneq ($(SGX_MODE), HW)
 	Server_Link_Flags += -lsgx_epid_sim -lsgx_quote_ex_sim
@@ -134,7 +134,7 @@ App_Name := Server
 
 Client_Cpp_Files := client/ecp/ecp.cpp networking/handlers/message_handler.cpp \
 					IAS/ias_simulation.cpp client/client_app/request_register.cpp server/utils/utils.cpp  
-Client_Include_Paths := -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/libcxx 
+Client_Include_Paths := -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/libcxx -I.
 Client_C_Flags := -fPIC -Wno-attributes -I$(SGX_SDK)/include \
 						-Iclient/sample_libcrypto \
 						-IIAS \
@@ -142,9 +142,10 @@ Client_C_Flags := -fPIC -Wno-attributes -I$(SGX_SDK)/include \
 						-Inetworking/handlers \
 						-Iclient/client_app \
 						-Iclient/ecp \
-						-Iserver/utils
+						-Iserver/utils \
+						-I.
 Client_Cpp_Flags := $(Client_C_Flags)
-Client_Link_Flags :=  -shared -L$(SGX_LIBRARY_PATH) -lsample_libcrypto -Lclient/sample_libcrypto
+Client_Link_Flags :=  -shared -L$(SGX_LIBRARY_PATH) -lsample_libcrypto -Lclient/sample_libcrypto -pthread
 
 Client_Cpp_Objects := $(Client_Cpp_Files:.cpp=.o)
 

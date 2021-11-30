@@ -1,7 +1,7 @@
 /*
  * Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
  * Autor: Guilherme Araujo Thomaz
- * Data da ultima modificacao: 15/11/2021
+ * Data da ultima modificacao: 24/11/2021
  * Descricao: flags de configuracao
  * 
  * Este codigo foi modificado seguindo as permissoes da licenca
@@ -22,17 +22,25 @@
 #endif
 
 #ifndef URL_MAX_SIZE
-#define URL_MAX_SIZE 256
+#define URL_MAX_SIZE 4096
 #endif
 
 #ifndef TEST_CLIENT_URL
-#define TEST_CLIENT_URL "http://TaciotClient"
+#define TEST_CLIENT_URL "localhost"
 #endif
 
 #ifndef SERVER_URL
-#define SERVER_URL "http://TaciotServer"
+#define SERVER_URL "localhost"
 #endif
 
 #ifndef COMUNICATION_PORT
 #define COMUNICATION_PORT 7777
+#endif
+
+#ifndef COMUNICATION_PORT_2
+#define COMUNICATION_PORT_2 7778
+#endif
+
+#ifndef HTTPLIB_PATH
+#define HTTPLIB_PATH "/home/guiaraujo/cpp-httplib/httplib.h"
 #endif

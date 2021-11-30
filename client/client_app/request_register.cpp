@@ -1,7 +1,7 @@
 /*
  * Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
  * Autor: Guilherme Araujo Thomaz
- * Data da ultima modificacao: 19/11/2021
+ * Data da ultima modificacao: 22/11/2021
  * Descricao: atesta o servidor para se registrar. 
  * 
  * Este codigo foi modificado seguindo as permissoes da licenca
