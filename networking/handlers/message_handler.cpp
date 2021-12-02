@@ -75,7 +75,14 @@ int ra_network_send_receive(const char *client_url,
         return -1;
     }
 
-    httplib::Client cli(SERVER_URL, COMUNICATION_PORT);
+    char url[URL_MAX_SIZE];
+    sprintf(url,"%s",client_url);
+    char* ip = strtok((char*)url,":");
+    char* port = strtok(NULL,":");
+    printf("%s e %s\n",ip,port);
+    int cli_port = strtol(port,NULL,10);
+    const std::string cli_ip(ip);
+    httplib::Client cli(cli_ip,cli_port);
     //httplib::Error cli_err;
 
     char* body;

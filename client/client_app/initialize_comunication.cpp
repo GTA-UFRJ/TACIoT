@@ -32,15 +32,15 @@ int main(void)
     svr.Get(R"(/attest/type=([0-9a-f]+)&size=([0-9a-f]+)&align=([0-9a-f]+)&body=([0-9a-f]+))", 
             [&](const Request& req, Response& res) {
         
-        std::string a_type = req.matches[0].str();
+        std::string a_type = req.matches[1].str();
         sprintf(c_type,"%x",a_type);
         type = (uint8_t)strtoul(c_type, NULL, 16);
 
-        std::string a_size = req.matches[1].str();
+        std::string a_size = req.matches[2].str();
         sprintf(c_size,"%x",a_size);
         size = (uint32_t)strtoul(c_size, NULL, 16);
 
-        std::string a_align = req.matches[2].str();
+        std::string a_align = req.matches[3].str();
         sprintf(c_align,"%x",a_size);
         char auxiliar[3];
         auxiliar[2] = '\0';
@@ -53,7 +53,7 @@ int main(void)
 
         c_body = (char*)malloc((size*2+1)*sizeof(char));
         body = (uint8_t*)malloc(size*sizeof(uint8_t));
-        std::string a_body = req.matches[3].str();
+        std::string a_body = req.matches[4].str();
         sprintf(c_body,"%x",a_body);
         for (int i=0; i<(size*2)-1; i=i+2)
         {
@@ -143,5 +143,5 @@ int main(void)
             free(response);
         }
     });
-    svr.listen(SERVER_URL,COMUNICATION_PORT);
+    svr.listen(TEST_CLIENT_URL,COMUNICATION_PORT);
 }

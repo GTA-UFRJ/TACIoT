@@ -1,7 +1,7 @@
 /*
  * Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
  * Autor: Guilherme Araujo Thomaz
- * Data da ultima modificacao: 15/11/2021
+ * Data da ultima modificacao: 02/12/2021
  * Descricao: funcoes do enclave do servidor
  * 
  * Este codigo foi modificado seguindo as permissoes da licenca
@@ -43,6 +43,8 @@
 #include "server_enclave_t.h"
 #include "sgx_tkey_exchange.h"
 #include "sgx_tcrypto.h"
+#include "sgx_tseal.h"
+#include "sgx_trts.h"
 #include <string.h>
 
 uint8_t g_secret[8] = {0};
@@ -122,7 +124,10 @@ sgx_status_t put_secret_data(
     sgx_ra_context_t context,
     uint8_t *p_secret,
     uint32_t secret_size,
-    uint8_t *p_gcm_mac)
+    uint8_t *p_gcm_mac,
+    sgx_ec256_public_t* client_pk,
+    sgx_sealed_data_t* sealed_data,
+    size_t sealed_size)
 {
     sgx_status_t ret = SGX_SUCCESS;
     sgx_ec_key_128bit_t sk_key;
@@ -145,7 +150,15 @@ sgx_status_t put_secret_data(
                                         (p_gcm_mac));
         ocall_print_secret(&g_secret[0], secret_size);
     } while(0);
-    
-    // Aqui entra selagem 
+
+    // Aqui entra a selagem
+    ret = sgx_seal_data(0, NULL, sizeof(g_secret[0])*8, &g_secret[0], sealed_size, sealed_data);
+
+    // Testando deselagem
+    uint8_t plaintext[8] = {0};
+    uint32_t plaintext_size = (uint32_t)(8*sizeof(uint8_t));
+    ret = sgx_unseal_data(sealed_data, NULL, NULL, &plaintext[0], &plaintext_size);
+    ocall_print_secret(&plaintext[0], plaintext_size);
+
     return ret;
 }

@@ -1,7 +1,7 @@
 /*
  * Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
  * Autor: Guilherme Araujo Thomaz
- * Data da ultima modificacao: 15/11/2021
+ * Data da ultima modificacao: 02/12/2021
  * Descricao: rotinas de borda para entradas e saidas do enclave
  * 
  * Este codigo foi modificado seguindo as permissoes da licenca
@@ -45,6 +45,7 @@ enclave {
     include "sgx_key_exchange.h"
     include "sgx_trts.h"
     include "sgx_tcrypto.h"
+    include "sgx_tseal.h"
 
     trusted {
         public sgx_status_t enclave_init_ra(int b_pse,
@@ -59,7 +60,10 @@ enclave {
         public sgx_status_t put_secret_data(sgx_ra_context_t context,  
                                             [in,size=secret_size] uint8_t* p_secret,
                                             uint32_t secret_size,
-                                            [in,count=16] uint8_t* gcm_mac);
+                                            [in,count=16] uint8_t* gcm_mac,
+                                            [in,count=1] sgx_ec256_public_t* client_pk,
+                                            [out,size=sealed_size]sgx_sealed_data_t* sealed_data,
+                                            size_t sealed_size);
     };
     
     untrusted {

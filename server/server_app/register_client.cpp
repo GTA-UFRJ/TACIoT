@@ -164,6 +164,10 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
     sample_ra_att_result_msg_t * p_att_result_msg_body;
     bool attestation_passed;
     uint32_t* extended_epid_group_id_memory_address;
+    size_t sealed_size;
+    uint8_t* sealed_data;
+    FILE* seal_file;
+    size_t write_num;
 
     // Obtem ID de grupo EPID
     uint32_t extended_epid_group_id = 0;
@@ -215,15 +219,17 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
     }
     fprintf(OUTPUT, "\nCall sgx_select_att_key_id success.");
         
+    char token_sufix[16+1];
+    sprintf(token_sufix, "%x%x%x%x",(client_pk->gx)[0],(client_pk->gy)[0],(client_pk->gx)[1],(client_pk->gy)[1]);
     do
     {
         // Arquivo do token do enclave correspondente ao cliente
         char token_path[PATH_MAX_SIZE];
         char enclave_path[PATH_MAX_SIZE];
-        char token_sufix[16+1];
-        sprintf(token_sufix, "%x%x%x%x",(client_pk->gx)[0],(client_pk->gy)[0],(client_pk->gx)[1],(client_pk->gy)[1]);
+        char seal_path[PATH_MAX_SIZE];
         ret = sprintf(token_path, "%s/%s", TOKENS_PATH, token_sufix);
         ret = sprintf(enclave_path,"%s",ENCLAVE_PATH);
+        ret = sprintf(seal_path, "%s/%s", SEALS_PATH, token_sufix);
 
         // Inicializa o enclave (ECALL)
         ret = initialize_enclave(&enclave_id, token_path, enclave_path);
@@ -438,6 +444,10 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
 
     // AQUI COMECA A COMUNICACAO DE DADOS
     // Pega o segredo enviado pelo cliente usando SK
+    sealed_size = sizeof(sgx_sealed_data_t) + sizeof(uint8_t)*8;
+    sealed_data = (uint8_t*)malloc(sealed_size);
+    char seal_path[PATH_MAX_SIZE];
+    ret = sprintf(seal_path, "%s/%s", SEALS_PATH, token_sufix);
     if(attestation_passed)
     {
         ret = put_secret_data(enclave_id,
@@ -445,7 +455,27 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
                               context,
                               p_att_result_msg_body->secret.payload,
                               p_att_result_msg_body->secret.payload_size,
-                              p_att_result_msg_body->secret.payload_tag);
+                              p_att_result_msg_body->secret.payload_tag,
+                              client_pk,
+                              (sgx_sealed_data_t*)sealed_data,
+                              sealed_size);
+        
+        seal_file = fopen(seal_path, "rb");
+        if (seal_file == NULL && (seal_file = fopen(seal_path, "wb")) == NULL) {
+            printf("\nWarning: Failed to create/open the seal file \"%s\".\n", seal_path);
+            fclose(seal_file);
+        }
+        
+        seal_file = freopen(seal_path, "wb", seal_file);
+        if (seal_file != NULL)
+        {
+            write_num = fwrite(sealed_data, 1, sealed_size, seal_file);
+        }
+        if (write_num != sealed_size)
+            printf("Warning: Failed to save sealed data to \"%s\".\n", seal_path);
+        fclose(seal_file);
+        fprintf(OUTPUT, "\nSave sealed data.");
+
         if((SGX_SUCCESS != ret)  || (SGX_SUCCESS != status))
         {
             error = SK_SECRET_FAILED;

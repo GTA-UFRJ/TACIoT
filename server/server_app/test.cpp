@@ -1,7 +1,7 @@
 /*
  * Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
  * Autor: Guilherme Araujo Thomaz
- * Data da ultima modificacao: 19/11/2021
+ * Data da ultima modificacao: 30/11/2021
  * Descricao: testes de desenvolvimento
  */
 
@@ -47,6 +47,8 @@ int main ()
     // Esta conversao de tipo devera ser feita pelo cliente ou pela comunicacao
     sgx_ec256_public_t* client_public_key;
     client_public_key = (sgx_ec256_public_t*)(&g_sp_pub_key);
+
+    // O cliente comeca enviando estas duas informacoes para o servidor
     error = attest_client(client_url, client_public_key);
     if (error == OK)
     {
