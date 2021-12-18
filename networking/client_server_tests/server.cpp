@@ -9,8 +9,13 @@ int main(void)
 
   Server svr;
 
-  svr.Get("/hi", [](const Request& req, Response& res) {
+  svr.Get("/hia", [](const Request& req, Response& res) {
     res.set_content("Hello World!", "text/plain");
+    int dumb;
+    while(1)
+    {
+      dumb = 1+1;
+    }
   });
 
   svr.Get(R"(/numbers/(\d+))", [&](const Request& req, Response& res) {

@@ -1,7 +1,7 @@
 /*
  * Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
  * Autor: Guilherme Araujo Thomaz
- * Data da ultima modificacao: 30/11/2021
+ * Data da ultima modificacao: 17/12/2021
  * Descricao: interface de alto nivel para funcionalidades de envio
  * e recepcao de mensagens entre cliente e servidor.
  * 
@@ -45,8 +45,9 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <iostream>
+#include <chrono>
+#include <thread>
 #include "message_handler.h"
-#include "request_register.h"
 #include "config_macros.h"
 #include HTTPLIB_PATH
 
@@ -67,6 +68,8 @@ int ra_network_send_receive(const char *client_url,
 {
     int ret = 0;
     ra_samp_response_header_t* p_resp_msg;
+    ra_samp_response_header_t resp_msg;
+    char response_msg[176+9+1];
 
     if((NULL == client_url) ||
         (NULL == p_req) ||
@@ -75,16 +78,18 @@ int ra_network_send_receive(const char *client_url,
         return -1;
     }
 
+    // Inicializa um cliente HTTP para se atestar para o cliente
     char url[URL_MAX_SIZE];
     sprintf(url,"%s",client_url);
     char* ip = strtok((char*)url,":");
     char* port = strtok(NULL,":");
-    printf("%s e %s\n",ip,port);
-    int cli_port = strtol(port,NULL,10);
+    fprintf(stdout,"%s e %s\n",ip,port);
+    int cli_port = (int)strtol(port,NULL,10);
     const std::string cli_ip(ip);
     httplib::Client cli(cli_ip,cli_port);
     //httplib::Error cli_err;
 
+    // Gera mensagem de atestacao para enviar para o cleinte
     char* body;
     uint32_t byte_length;
     byte_length = p_req->size / sizeof(uint8_t); 
@@ -96,7 +101,6 @@ int ra_network_send_receive(const char *client_url,
         body[2*i+1] = auxiliary_string[1];
     }
     body[2*byte_length] = '\0';
-
     char* http_code = (char*)malloc(URL_MAX_SIZE*sizeof(char));
     sprintf(http_code, "/attest/type=%02x&size=%02x&align=%02x%02x%02x&body=%s", 
                                                                 p_req->type,
@@ -106,79 +110,103 @@ int ra_network_send_receive(const char *client_url,
                                                                 p_req->align[2],
                                                                 body);
     free(body);
-    fprintf(stdout,"%s\n",http_code);
 
-    if (auto res = cli.Get(http_code)){
-        if (res->status == 200) {
-            // fprintf(stdout, "Response: %s\n", res->body);
-            std::cout << res->body << std::endl;
-        } 
-    } else {
-        fprintf(stdout, "HTTP Error: %d", (int)res.error());
+    // Tenta se comunicar com o cliente x vezes
+    int tries = 0;
+    int i;
+    bool loop;
+    char* type;
+    char* status;
+    char status0[3];
+    char status1[3];
+    char* size;
+    char* align;
+    char* res_body;
+    unsigned int u_type;
+    unsigned int u_status0;
+    unsigned int u_status1;
+    unsigned int u_size;
+    unsigned int u_align;
+    char auxiliar[3];
+    bool sent = false;
+    while (sent == false)
+    {
+        // Evnia mensagem e obtem resposta do cliente
+        if (auto res = cli.Get(http_code)){
+            fprintf(stdout,"\nServidor enviou: %s\n",http_code);
+            sent = true;
+            if (res->status == 200) {
+                // fprintf(stdout, "Response: %s\n", res->body);
+                fprintf(stdout,"\nServidor recebeu: \n");
+
+                // Obtem os campos da resposta na forma de string
+                //std::cout << res->body << std::endl;
+                fprintf(stdout,"\n%s\n",res->body.c_str());
+                sprintf(response_msg,"%s",res->body.c_str());
+                type = strtok((char*)response_msg,":");
+                status = strtok(NULL,":");
+                status0[0] = status[0];
+                status0[1] = status[1];
+                status0[2] = '\0';
+                status1[0] = status[2];
+                status1[1] = status[3];
+                status1[2] = '\0';
+                size = strtok(NULL,":");
+                align = strtok(NULL,":");
+                res_body = strtok(NULL,":");
+
+                // Transforma os caracteres em hexadecimal
+                u_type = (unsigned)strtoul(type,NULL,16);
+                resp_msg.type = uint8_t(u_type);
+                u_status0 = (unsigned)strtoul(status0,NULL,16);
+                u_status1 = (unsigned)strtoul(status1,NULL,16);
+                resp_msg.status[0] = uint8_t(u_status0);
+                resp_msg.status[1] = uint8_t(u_status1);
+                u_size = (unsigned)strtoul(size,NULL,16);
+                resp_msg.size = uint32_t(u_size);
+                u_align = (unsigned)strtoul(align,NULL,16);
+                resp_msg.align[0] = uint8_t(u_align);
+
+                // Preenche a estrutura da resposta
+                auxiliar[2] = '\0';
+                i = 0;
+                loop = true;
+                ra_free_network_response_buffer(p_resp_msg);
+                p_resp_msg = (ra_samp_response_header_t*)malloc(sizeof(uint8_t)*(1+2+4+u_size));       
+                p_resp_msg->type = resp_msg.type;
+                p_resp_msg->status[0] = resp_msg.status[0];
+                p_resp_msg->status[1] = resp_msg.status[1];
+                p_resp_msg->size = resp_msg.size;
+                p_resp_msg->align[1] = resp_msg.align[1];
+                for (uint32_t i=0; i<(u_size*2)-1; i=i+2)
+                {
+                    auxiliar[0] = res_body[i];
+                    auxiliar[1] = res_body[i+1];
+                    p_resp_msg->body[i/2] = (uint8_t)strtoul(auxiliar,NULL,16);
+                    //fprintf(stdout,"%02x ",p_resp_msg->body[i/2]);
+                }
+
+            } 
+        } else {
+            // Espera 400ms antes de tentar denovo
+            fprintf(stdout, "HTTP Error: %d\n", (int)res.error());
+            using namespace std::this_thread; // sleep_for, sleep_until
+            using namespace std::chrono; // nanoseconds, system_clock, seconds
+
+            sleep_for(nanoseconds(10));
+            sleep_until(system_clock::now() + milliseconds(2500));
+        }
+        if (tries < 20)
+        {
+            tries++;
+        } else {
+            sent = false;
+        }
     }
     free(http_code);
 
-    // Modelo antigo
-    switch(p_req->type)
-    {
-    case TYPE_RA_MSG0:
-        
-        ret = sp_ra_proc_msg0_req((const sample_ra_msg0_t*)((size_t)p_req
-            + sizeof(ra_samp_request_header_t)),
-            p_req->size,
-            &p_resp_msg);
-        if (0 != ret)
-        {
-            fprintf(stderr, "\nError, call sp_ra_proc_msg1_req fail [%s].",
-                __FUNCTION__);
-        }
-        else
-        {
-            *p_resp = p_resp_msg;
-        }
-        break;
-
-    case TYPE_RA_MSG1:
-
-        ret = sp_ra_proc_msg1_req((const sample_ra_msg1_t*)((size_t)p_req
-            + sizeof(ra_samp_request_header_t)),
-            p_req->size,
-            &p_resp_msg);
-        if(0 != ret)
-        {
-            fprintf(stderr, "\nError, call sp_ra_proc_msg1_req fail [%s].",
-                __FUNCTION__);
-        }
-        else
-        {
-            *p_resp = p_resp_msg;
-        }
-        break;
-
-    case TYPE_RA_MSG3:
-
-        ret =sp_ra_proc_msg3_req((const sample_ra_msg3_t*)((size_t)p_req +
-            sizeof(ra_samp_request_header_t)),
-            p_req->size,
-            &p_resp_msg);
-        if(0 != ret)
-        {
-            fprintf(stderr, "\nError, call sp_ra_proc_msg3_req fail [%s].",
-                __FUNCTION__);
-        }
-        else
-        {
-            *p_resp = p_resp_msg;
-        }
-        break;
-
-    default:
-        ret = -1;
-        fprintf(stderr, "\nError, unknown ra message type. Type = %d [%s].",
-            p_req->type, __FUNCTION__);
-        break;
-    }
-
+    // Retorna resposta do cliente para a funcao de atestacao que chamou essa
+    *p_resp = p_resp_msg;
     return ret;
 }
 

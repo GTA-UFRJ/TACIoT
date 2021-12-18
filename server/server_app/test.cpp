@@ -1,7 +1,7 @@
 /*
  * Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
  * Autor: Guilherme Araujo Thomaz
- * Data da ultima modificacao: 30/11/2021
+ * Data da ultima modificacao: 15/12/2021
  * Descricao: testes de desenvolvimento
  */
 
@@ -12,7 +12,13 @@
 //#include "request_register.h"
 #include "sgx_tcrypto.h"
 #include "config_macros.h"
-
+#include HTTPLIB_PATH
+/*
+typedef enum msg_t{
+    register,
+    put_data
+} msg_t;
+*/
 #ifndef CLIENT_PK
 #define CLIENT_PK
 typedef struct sample_ec_pub_t
@@ -22,6 +28,7 @@ typedef struct sample_ec_pub_t
 } sample_ec_pub_t;
 #endif
 
+// Gabarito de chave a ser recebida nos testes
 static const sample_ec_pub_t g_sp_pub_key = {
     {
         0x72, 0x12, 0x8a, 0x7a, 0x17, 0x52, 0x6e, 0xbf,
@@ -39,21 +46,68 @@ static const sample_ec_pub_t g_sp_pub_key = {
 
 int main ()
 {
-    error_code error;
     char client_url[URL_MAX_SIZE];
+    //sprintf(client_url, "%s:%u", TEST_CLIENT_URL, COMUNICATION_PORT);
+    //printf("%s\n",client_url);
+    //sgx_ec256_public_t* client_public_key;
+    //client_public_key = (sgx_ec256_public_t*)(&g_sp_pub_key);
+    error_code error = OK;
+    //char c_pk[16*4*2+1];
+    //sample_ec_pub_t g_cli_pk;
+/*
+    // Configura mensagem de iniciar atestacao do servidor
+    using namespace httplib;
+    Server svr;
+    //msg_t received_msg;
+    svr.Get(R"(/register/url=([0-9a-zA-Z@]+)&port=(\d+)&pk=([0-9a-f]+))", [&](const Request& req, Response& res) {
+        
+        // Responde "ok" para o cliente
+        fprintf(stdout,"\nServidor Recebeu\n");
+        fprintf(stdout,"\nServidor enviou: ok\n");
+        res.set_content("ok", "text/plain");
+
+        // Verifica parametros recebidos na forma de string
+        std::string url = req.matches[1].str();
+        std::string port = req.matches[2].str();
+        std::string a_pk = req.matches[3].str();
+        sprintf(client_url,"%s:%s",url.c_str(),port.c_str());
+        sprintf(c_pk,"%s",a_pk.c_str());
+        fprintf(stdout,"\n%s e %s\n", client_url, c_pk);
+
+        // Monta o par gx e gy do cliente
+        char auxiliar[3];
+        auxiliar[2] = '\0';
+        for (int i=0; i<16*4; i=i+2)
+        {
+            auxiliar[0] = c_pk[i];
+            auxiliar[1] = c_pk[i+1];
+            g_cli_pk.gx[i/2] = (uint8_t)strtoul(auxiliar, NULL, 16);
+        }
+        for (int i=16*4; i<16*4*2; i=i+2)
+        {
+            auxiliar[0] = c_pk[i];
+            auxiliar[1] = c_pk[i+1];
+            g_cli_pk.gy[i/2] = (uint8_t)strtoul(auxiliar, NULL, 16);
+        }
+        //sgx_ec256_public_t* pk;
+        //pk = (sgx_ec256_public_t*)(&g_cli_pk);
+
+        // Chama funcao para atestar e registrar o cliente
+        error = attest_client(client_url, (sgx_ec256_public_t*)(&g_cli_pk));
+    });
+*/
     sprintf(client_url, "%s:%u", TEST_CLIENT_URL, COMUNICATION_PORT);
-    printf("%s\n",client_url);
 
-    // Esta conversao de tipo devera ser feita pelo cliente ou pela comunicacao
-    sgx_ec256_public_t* client_public_key;
-    client_public_key = (sgx_ec256_public_t*)(&g_sp_pub_key);
+    // Chama funcao para atestar e registrar o cliente
+    error = attest_client(client_url, (sgx_ec256_public_t*)(&g_sp_pub_key));
 
-    // O cliente comeca enviando estas duas informacoes para o servidor
-    error = attest_client(client_url, client_public_key);
-    if (error == OK)
-    {
-        printf("OK\n");
-    }
+/*
+    // Inicializa o servidor ouvindo na porta 7778
+    char server_url[URL_MAX_SIZE];
+    sprintf(server_url,SERVER_URL);
+    const std::string srv_url(server_url);
+    svr.listen(server_url, COMUNICATION_PORT_2);
+*/
     return int(error);
 }
 

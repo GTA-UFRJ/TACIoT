@@ -48,3 +48,9 @@
 #ifndef SEALS_PATH
 #define SEALS_PATH "/home/guiaraujo/TACIoT/server/seals"
 #endif
+
+#ifndef CLIENT_GXGYPK
+#define CLIENT_GXGYPK "72128a7a17526ebf85d03a623730aead3e3daaee9c60731db05be8621c4beb38d48140d950e2577b26eeb741e7c614e224b7bdc903f29a28a83cc81011145e06"
+  
+#endif
+

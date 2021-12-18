@@ -17,5 +17,10 @@ source environment
 To run the project, follow these steps:
 ```
 make
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/guiaraujo/TACIoT/client/sample_libcrypto/
+./Client
+```
+In other terminal, repeat the source environment command and then, execute:
+```
 ./Server
 ```
