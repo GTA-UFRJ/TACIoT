@@ -11,6 +11,8 @@
 #include <stdio.h>
 #include <iostream>
 #include <string.h>
+#include <chrono>
+#include <thread>
 #include "request_register.h"
 #include "config_macros.h"
 #include HTTPLIB_PATH
@@ -53,8 +55,13 @@ int main(void)
 
     // Cliente oferece um servico de atestacao a nuvem
     Server svr;
+    svr.Get("/stop", [&](const Request& req, Response& res) {
+        svr.stop();
+    });
     svr.Get(R"(/attest/type=([0-9a-f]+)&size=([0-9a-f]+)&align=([0-9a-f]+)&body=([0-9a-f]+))", 
             [&](const Request& req, Response& res) {
+        
+        std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
 
         fprintf(stdout,"\nCliente recebeu mensagem\n");
         
@@ -183,6 +190,7 @@ int main(void)
 
     // O cliente serve a nuvem na porta 7777 para atestacao
     fprintf(stdout,"\nCliente iniciou o servico de atestacao\n");
+    fprintf(stdout,"Latencia: %d\n", LATENCY_MS);
     svr.listen(TEST_CLIENT_URL,COMUNICATION_PORT);
     return ret;
 }

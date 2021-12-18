@@ -43,6 +43,7 @@ SGX_SDK ?= /opt/intel/sgxsdk
 SGX_MODE ?= HW
 SGX_ARCH ?= x64
 SGX_DEBUG ?= 1
+LATENCY ?= 100
 
 HTTPLIB_DIR ?= /home/guiaraujo/cpp-httplib/
 LD_LIBRARY_PATH := $($(LD_LIBRARY_PATH):$(CURDIR)/client/sample_libcrypto/)
@@ -150,7 +151,8 @@ Client_C_Flags := -shared -fPIC -Wno-attributes -I$(SGX_SDK)/include \
 						-Iserver/utils \
 					 	-Inetworking/handlers \
 					 	-I$(HTTPLIB_DIR) \
-						-I.
+						-I. \
+						-DLATENCY_MS=$(LATENCY)
 Client_Cpp_Flags := $(Client_C_Flags)
 Client_Link_Flags := -L$(SGX_LIBRARY_PATH) -lsample_libcrypto -Lclient/sample_libcrypto -pthread
 

@@ -1,7 +1,7 @@
 /*
  * Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
  * Autor: Guilherme Araujo Thomaz
- * Data da ultima modificacao: 13/11/2021
+ * Data da ultima modificacao: 18/12/2021
  * Descricao: simula um servidor de atetsacao da Intel real
  * 
  * Este codigo foi modificado seguindo as permissoes da licenca
@@ -48,6 +48,9 @@
 #include <time.h>
 #include <string.h>
 #include "ias_simulation.h"
+#include <chrono>
+#include <thread>
+#include "config_macros.h"
 
 //This whole file is used as simulation of the interfaces to be
 // delivered an attestation server.
@@ -115,6 +118,7 @@ int ias_verify_attestation_evidence(
     uint8_t* pse_manifest,
     ias_att_report_t* p_attestation_verification_report)
 {
+    std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
     int ret = 0;
     sample_ecc_state_handle_t ecc_state = NULL;
 
@@ -208,6 +212,7 @@ int ias_get_sigrl(
     uint32_t *p_sig_rl_size,
     uint8_t **p_sig_rl)
 {
+    std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
     int ret = 0;
 
     UNUSED(gid);
@@ -244,6 +249,7 @@ int ias_enroll(
     sample_spid_t *p_spid,
     int *p_authentication_token)
 {
+    std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
     UNUSED(sp_credentials);
     UNUSED(p_authentication_token);
 
