@@ -148,7 +148,8 @@ static int g_sp_credentials = 0;
 static int g_authentication_token = 0;
 
 // CHAVE PARA CADASTRO
-uint8_t g_secret[] = {0,1,2,3,4,5,6,7};
+uint8_t g_secret[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+                        0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
 
 sample_spid_t g_spid;
 

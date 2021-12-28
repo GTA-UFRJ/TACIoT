@@ -64,6 +64,14 @@ enclave {
                                             [in,count=1] sgx_ec256_public_t* client_pk,
                                             [out,size=sealed_size]sgx_sealed_data_t* sealed_data,
                                             size_t sealed_size);
+        public sgx_status_t process_data([in,count=1] sgx_sealed_data_t* sealed_key,
+                                         [in,size=encrypted_data_size] char* encrypted_data,
+                                         uint32_t encrypted_data_size,
+                                         uint32_t dec_msg_len, 
+                                         [out,size=buffer_max_size] uint8_t* processed_result,
+                                         uint32_t buffer_max_size,
+                                         [out,size=buffer_max_size] uint32_t* processed_result_size,
+                                         int process); 
     };
     
     untrusted {

@@ -56,3 +56,23 @@
 #ifndef LATENCY_MS
 #define LATENCY_MS 100
 #endif
+
+#ifndef ULTRALIGHT_SAMPLE
+#define ULTRALIGHT_SAMPLE "pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281"
+#endif
+
+#ifndef ULTRALIGHT_SIZE
+#define ULTRALIGHT_SIZE 85+1
+#endif
+
+#ifndef SEALED_SIZE
+#define SEALED_SIZE 4096
+#endif
+
+#ifndef RESULT_MAX_SIZE
+#define RESULT_MAX_SIZE 1024
+#endif
+
+#ifndef DATA_PATH
+#define DATA_PATH "/home/guiaraujo/TACIoT/data"
+#endif

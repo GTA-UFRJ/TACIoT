@@ -62,6 +62,7 @@ int initialize_enclave(sgx_enclave_id_t* eid, char* launch_token_path, char* enc
             printf("Warning: Invalid launch token read from \"%s\".\n", token_path);
         }
     }
+    
     /* Step 2: call sgx_create_enclave to initialize an enclave instance */
     /* Debug Support: set 2nd parameter to 1 */
     ret = sgx_create_enclave(enclave_name, SGX_DEBUG_FLAG, &token, &updated, eid, NULL);

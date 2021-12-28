@@ -444,7 +444,7 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
 
     // AQUI COMECA A COMUNICACAO DE DADOS
     // Pega o segredo enviado pelo cliente usando SK
-    sealed_size = sizeof(sgx_sealed_data_t) + sizeof(uint8_t)*8;
+    sealed_size = sizeof(sgx_sealed_data_t) + sizeof(uint8_t)*16;
     sealed_data = (uint8_t*)malloc(sealed_size);
     char seal_path[PATH_MAX_SIZE];
     ret = sprintf(seal_path, "%s/%s", SEALS_PATH, token_sufix);
@@ -459,6 +459,7 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
                               client_pk,
                               (sgx_sealed_data_t*)sealed_data,
                               sealed_size);
+        //ocall_print_secret(p_att_result_msg_body->secret.payload_tag, 16);
         
         seal_file = fopen(seal_path, "rb");
         if (seal_file == NULL && (seal_file = fopen(seal_path, "wb")) == NULL) {

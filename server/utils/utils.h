@@ -9,12 +9,13 @@
  *
  */
 
-#ifndef _UTILS_H_
-#define _UTILS_H_
-
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include "sample_libcrypto.h"
+
+#ifndef _UTILS_H_
+#define _UTILS_H_
 
 #ifndef _ERRNO_T_DEFINED
 #define _ERRNO_T_DEFINED
@@ -29,6 +30,10 @@ errno_t memcpy_s(void *dest, size_t numberOfElements, const void *src,
                  size_t count);
 
 void PRINT_BYTE_ARRAY(FILE *file, void *mem, uint32_t len);
+
+void utility_encrypt_file(unsigned char *decMessageIn, size_t len, unsigned char *encMessageOut, size_t lenOut, const sample_aes_gcm_128bit_key_t (*key)[16]);
+
+void utility_decrypt_file(unsigned char *encMessageIn, size_t len, unsigned char *decMessageOut, size_t lenOut, const sample_aes_gcm_128bit_key_t** key);
 
 typedef enum {
     OK,                         //0
