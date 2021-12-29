@@ -24,3 +24,10 @@ In other terminal, repeat the source environment command and then, execute:
 ```
 ./Server
 ```
+To test the SGX Publish application:
+```
+make
+make Publish
+./Publish
+./Publish x
+```

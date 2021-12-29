@@ -173,7 +173,7 @@ sgx_status_t process_data(
     uint8_t*  processed_result,
     uint32_t buffer_max_size,
     uint32_t* processed_result_size,
-    int process)
+    unsigned int process)
 {
     // Chama enclave para desselar chave, decriptar com a chave, processar e rertornar resultado encriptado
     // pk|72d41281|type|weg_multimeter|size|0x35|encrypted|AES128(pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281)

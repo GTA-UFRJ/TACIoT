@@ -97,11 +97,13 @@ int main(int argc, char const *argv[])
     sprintf(snd_msg, "pk|72d41281|size|%02x|encrypted|%s", (unsigned int)encMessageLen+1 ,encMessage);
     free(encMessage);
     printf("\n");
+    /*
     for (int k=0; k<int(28*sizeof(char)+(encMessageLen+1)*sizeof(char)); k++)
     {
         printf("0x%02x, ", (uint8_t)snd_msg[k]);
     }
     printf("\n");
+    */
     
     // Latencia de envio
     std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
@@ -144,8 +146,7 @@ int main(int argc, char const *argv[])
         }
     }
 
-    // Se nao for processar, pula pro final
-    printf("%d\n",argc);
+    // Se nao  for processar, pula pro final
     if (argc>1)
     {
 
@@ -181,6 +182,7 @@ int main(int argc, char const *argv[])
 
         // Chama enclave para desselar chave, decriptar com a chave, processar e rertornar resultado encriptado
         // pk|72d41281|type|weg_multimeter|size|0x35|encrypted|AES128(pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281)
+        unsigned int process = strtoul(argv[1], NULL, 10);
         uint8_t processed_data [RESULT_MAX_SIZE];
         sgx_status_t ecall_status;
         sgx_status_t sgx_status;
@@ -194,7 +196,7 @@ int main(int argc, char const *argv[])
             processed_data,                             //dado a ser publicado
             (uint32_t)RESULT_MAX_SIZE,                  //tamanho maximo do buffer com o dado a ser publicado
             &real_size,                                 //tamanho real do dado a ser publicado
-            0                                           //nao aplica processamento computacionalmente custoso               
+            process                                     //nao aplica processamento computacionalmente custoso               
             );
         printf("%s", processed_data);
         printf("\n");

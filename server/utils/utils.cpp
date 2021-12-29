@@ -76,12 +76,12 @@ void utility_encrypt_file(unsigned char *decMessageIn, size_t len, unsigned char
             SAMPLE_AESGCM_IV_SIZE,
             NULL, 0,
             (sample_aes_gcm_128bit_tag_t *) (p_dst));
-
+/*
     if(ret == SAMPLE_SUCCESS) printf("ENCRYPT RESULT: SAMPLE_SUCCESS");
     if(ret == SAMPLE_ERROR_INVALID_PARAMETER) printf("ENCRYPT RESULT: SAMPLE_ERROR_INVALID_PARAMETER");
     if(ret == SAMPLE_ERROR_OUT_OF_MEMORY) printf("ENCRYPT RESULT: SAMPLE_ERROR_OUT_OF_MEMORY");
     if(ret == SAMPLE_ERROR_UNEXPECTED) printf("ENCRYPT RESULT: SAMPLE_ERROR_UNEXPECTED");
-
+*/
     memcpy(encMessageOut,p_dst,lenOut);
 }
 
@@ -111,11 +111,11 @@ void utility_decrypt_file(unsigned char *encMessageIn, size_t len, unsigned char
 //            encMessage + SAMPLE_AESGCM_MAC_SIZE, SAMPLE_AESGCM_IV_SIZE,
 //            NULL, 0,
 //            (sample_aes_gcm_128bit_tag_t *) encMessage);
-
+/*
     if(ret == SAMPLE_SUCCESS) printf("DECRYPT RESULT: SAMPLE_SUCCESS");
     if(ret == SAMPLE_ERROR_INVALID_PARAMETER) printf("DECRYPT RESULT: SAMPLE_ERROR_INVALID_PARAMETER");
     if(ret == SAMPLE_ERROR_OUT_OF_MEMORY) printf("DECRYPT RESULT: SAMPLE_ERROR_OUT_OF_MEMORY");
     if(ret == SAMPLE_ERROR_UNEXPECTED) printf("DECRYPT RESULT: SAMPLE_ERROR_UNEXPECTED");
-
+*/
     memcpy(decMessageOut, p_dst, lenOut);
 }
