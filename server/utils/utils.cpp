@@ -54,6 +54,7 @@ void gen_iv(uint8_t* iv)
     for(int i=0;i<12;i++)
     {
         iv[i] = static_cast<uint8_t>(rand()%10) + 48;
+        //iv[i] = 0;
     }
 }
 

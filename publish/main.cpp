@@ -69,10 +69,10 @@ void ocall_print_secret(uint8_t* secret, uint32_t secret_size)
 {
     uint32_t i;
     char hex_number[5];
+    printf("\n");
     for (i=0;i<secret_size;i++)
     {
-        sprintf(hex_number, "%x", secret[i]);
-        printf("%s ", hex_number);
+        printf("0x%02x, ", secret[i]);
     }
     printf("\n");
 }
@@ -93,12 +93,12 @@ int main(int argc, char const *argv[])
     encMessage[encMessageLen] = '\0';
 
     // Cliente monta mensagem
-    char* snd_msg = (char*)malloc(28*sizeof(char)+(encMessageLen+1)*sizeof(char));
+    char* snd_msg = (char*)malloc(30*sizeof(char)+(encMessageLen+1)*sizeof(char));
     sprintf(snd_msg, "pk|72d41281|size|%02x|encrypted|%s", (unsigned int)encMessageLen+1 ,encMessage);
     free(encMessage);
-    printf("\n");
     /*
-    for (int k=0; k<int(28*sizeof(char)+(encMessageLen+1)*sizeof(char)); k++)
+    printf("\n");
+    for (int k=0; k<int(30*sizeof(char)+(encMessageLen+1)*sizeof(char)); k++)
     {
         printf("0x%02x, ", (uint8_t)snd_msg[k]);
     }
@@ -132,8 +132,8 @@ int main(int argc, char const *argv[])
         if (i == 3)
         {
             rcv_msg.encrypted_size = (uint32_t)strtoul(token,NULL,16);
+            rcv_msg.encrypted = (char*)malloc(rcv_msg.encrypted_size);
         }
-        rcv_msg.encrypted = (char*)malloc(rcv_msg.encrypted_size);
 
         // Obtem mensagem encriptada
         if (i == 5)
@@ -145,6 +145,16 @@ int main(int argc, char const *argv[])
             rcv_msg.encrypted[rcv_msg.encrypted_size] = '\0';
         }
     }
+    /*
+    printf("\n%s\n",rcv_msg.pk);
+    printf("\n%u\n",rcv_msg.encrypted_size);
+    printf("\n");
+    for (uint32_t k=0; k<rcv_msg.encrypted_size; k++)
+    {
+        printf("0x%02x, ", (uint8_t)rcv_msg.encrypted[k]);
+    }
+    printf("\n\n");
+    */
 
     // Se nao  for processar, pula pro final
     if (argc>1)
@@ -198,8 +208,8 @@ int main(int argc, char const *argv[])
             &real_size,                                 //tamanho real do dado a ser publicado
             process                                     //nao aplica processamento computacionalmente custoso               
             );
-        printf("%s", processed_data);
-        printf("\n");
+        //printf("%s", processed_data);
+        //printf("\n");
     }
 
     // Mede o tempo novamente apos o processamento do servidor

@@ -183,7 +183,13 @@ sgx_status_t process_data(
     uint8_t key[16] = {0}; 
     uint32_t key_size = (uint32_t)(16*sizeof(uint8_t));
     ret = sgx_unseal_data(sealed_key, NULL, NULL, &key[0], &key_size);
-    ocall_print_secret(&key[0], key_size);
+
+    uint8_t encrypted_bytes[encrypted_data_size];
+    for (uint32_t j=0; j<encrypted_data_size; j++)
+    {
+        encrypted_bytes[j] = (uint8_t)encrypted_data[j];
+    }
+    //ocall_print_secret(&encrypted_bytes[0], encrypted_data_size);
 
     // Decripta dado com a chave
     // HA UMA VULNERABILIDADE AQUI
@@ -195,16 +201,17 @@ sgx_status_t process_data(
         my_key[i] = key[i];
     }
     ret = sgx_rijndael128GCM_decrypt(&my_key,
-                                    (uint8_t*)encrypted_data,
-                                    encrypted_data_size,
-                                    decMessage,
-                                    (uint8_t*)encrypted_data + 16,
+                                    &encrypted_bytes[0] + 16 + 12,
+                                    dec_msg_len,
+                                    &decMessage[0],
+                                    &encrypted_bytes[0] + 16,
                                     12,
                                     NULL,
                                     0,
                                     (const sgx_aes_gcm_128bit_tag_t*)
-                                    (encrypted_data));
-    ocall_print_secret(&decMessage[0], dec_msg_len);
+                                    (&encrypted_bytes[0]));
+    //return ret;
+    //ocall_print_secret(&decMessage[0], dec_msg_len);
 
     // Processa dado
     uint8_t proc[dec_msg_len+1];
@@ -232,7 +239,7 @@ sgx_status_t process_data(
                                     0,
                                     (sgx_aes_gcm_128bit_tag_t*)
                                     (processed_result));
-    ocall_print_secret(&processed_result[0], *processed_result_size);
+    //ocall_print_secret(&processed_result[0], *processed_result_size);
 
     return ret;
 }
