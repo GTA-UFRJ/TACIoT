@@ -1,0 +1,250 @@
+Iniciando round 1 (latencia = 50)
+
+real	0m1,544s
+user	0m0,012s
+sys	0m0,034s
+Iniciando round 2 (latencia = 50)
+
+real	0m1,546s
+user	0m0,009s
+sys	0m0,039s
+Iniciando round 3 (latencia = 50)
+
+real	0m1,517s
+user	0m0,005s
+sys	0m0,014s
+Iniciando round 4 (latencia = 50)
+
+real	0m1,570s
+user	0m0,019s
+sys	0m0,029s
+Iniciando round 5 (latencia = 50)
+
+real	0m1,544s
+user	0m0,008s
+sys	0m0,039s
+Iniciando round 6 (latencia = 50)
+
+real	0m1,545s
+user	0m0,017s
+sys	0m0,030s
+Iniciando round 7 (latencia = 50)
+
+real	0m1,546s
+user	0m0,012s
+sys	0m0,035s
+Iniciando round 8 (latencia = 50)
+
+real	0m1,545s
+user	0m0,012s
+sys	0m0,036s
+Iniciando round 9 (latencia = 50)
+
+real	0m1,545s
+user	0m0,005s
+sys	0m0,042s
+Iniciando round 10 (latencia = 50)
+
+real	0m1,539s
+user	0m0,013s
+sys	0m0,033s
+Iniciando round 1 (latencia = 100)
+
+real	0m1,846s
+user	0m0,013s
+sys	0m0,035s
+Iniciando round 2 (latencia = 100)
+
+real	0m1,844s
+user	0m0,009s
+sys	0m0,036s
+Iniciando round 3 (latencia = 100)
+
+real	0m1,847s
+user	0m0,013s
+sys	0m0,035s
+Iniciando round 4 (latencia = 100)
+
+real	0m1,845s
+user	0m0,013s
+sys	0m0,034s
+Iniciando round 5 (latencia = 100)
+
+real	0m1,846s
+user	0m0,016s
+sys	0m0,032s
+Iniciando round 6 (latencia = 100)
+
+real	0m1,846s
+user	0m0,004s
+sys	0m0,044s
+Iniciando round 7 (latencia = 100)
+
+real	0m1,846s
+user	0m0,007s
+sys	0m0,040s
+Iniciando round 8 (latencia = 100)
+
+real	0m1,846s
+user	0m0,012s
+sys	0m0,036s
+Iniciando round 9 (latencia = 100)
+
+real	0m1,846s
+user	0m0,021s
+sys	0m0,026s
+Iniciando round 10 (latencia = 100)
+
+real	0m1,846s
+user	0m0,014s
+sys	0m0,033s
+Iniciando round 1 (latencia = 200)
+
+real	0m2,424s
+user	0m0,014s
+sys	0m0,011s
+Iniciando round 2 (latencia = 200)
+
+real	0m2,422s
+user	0m0,000s
+sys	0m0,025s
+Iniciando round 3 (latencia = 200)
+
+real	0m2,423s
+user	0m0,007s
+sys	0m0,018s
+Iniciando round 4 (latencia = 200)
+
+real	0m2,423s
+user	0m0,010s
+sys	0m0,015s
+Iniciando round 5 (latencia = 200)
+
+real	0m2,422s
+user	0m0,011s
+sys	0m0,012s
+Iniciando round 6 (latencia = 200)
+
+real	0m2,423s
+user	0m0,006s
+sys	0m0,019s
+Iniciando round 7 (latencia = 200)
+
+real	0m2,424s
+user	0m0,008s
+sys	0m0,017s
+Iniciando round 8 (latencia = 200)
+
+real	0m2,422s
+user	0m0,013s
+sys	0m0,011s
+Iniciando round 9 (latencia = 200)
+
+real	0m2,423s
+user	0m0,004s
+sys	0m0,021s
+Iniciando round 10 (latencia = 200)
+
+real	0m2,421s
+user	0m0,008s
+sys	0m0,017s
+Iniciando round 1 (latencia = 400)
+
+real	0m3,625s
+user	0m0,013s
+sys	0m0,012s
+Iniciando round 2 (latencia = 400)
+
+real	0m3,621s
+user	0m0,011s
+sys	0m0,011s
+Iniciando round 3 (latencia = 400)
+
+real	0m3,623s
+user	0m0,000s
+sys	0m0,025s
+Iniciando round 4 (latencia = 400)
+
+real	0m3,625s
+user	0m0,000s
+sys	0m0,025s
+Iniciando round 5 (latencia = 400)
+
+real	0m3,650s
+user	0m0,016s
+sys	0m0,017s
+Iniciando round 6 (latencia = 400)
+
+real	0m3,623s
+user	0m0,004s
+sys	0m0,018s
+Iniciando round 7 (latencia = 400)
+
+real	0m3,641s
+user	0m0,004s
+sys	0m0,039s
+Iniciando round 8 (latencia = 400)
+
+real	0m3,623s
+user	0m0,007s
+sys	0m0,018s
+Iniciando round 9 (latencia = 400)
+
+real	0m3,622s
+user	0m0,010s
+sys	0m0,014s
+Iniciando round 10 (latencia = 400)
+
+real	0m3,623s
+user	0m0,010s
+sys	0m0,016s
+Iniciando round 1 (latencia = 800)
+
+real	0m6,025s
+user	0m0,007s
+sys	0m0,019s
+Iniciando round 2 (latencia = 800)
+
+real	0m6,022s
+user	0m0,004s
+sys	0m0,021s
+Iniciando round 3 (latencia = 800)
+
+real	0m6,023s
+user	0m0,011s
+sys	0m0,014s
+Iniciando round 4 (latencia = 800)
+
+real	0m6,022s
+user	0m0,005s
+sys	0m0,020s
+Iniciando round 5 (latencia = 800)
+
+real	0m6,024s
+user	0m0,011s
+sys	0m0,015s
+Iniciando round 6 (latencia = 800)
+
+real	0m6,024s
+user	0m0,011s
+sys	0m0,015s
+Iniciando round 7 (latencia = 800)
+
+real	0m6,023s
+user	0m0,005s
+sys	0m0,020s
+Iniciando round 8 (latencia = 800)
+
+real	0m6,025s
+user	0m0,010s
+sys	0m0,015s
+Iniciando round 9 (latencia = 800)
+
+real	0m6,024s
+user	0m0,007s
+sys	0m0,019s
+Iniciando round 10 (latencia = 800)
+
+real	0m6,023s
+user	0m0,011s
+sys	0m0,015s

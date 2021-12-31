@@ -8,7 +8,7 @@ touch $results_path
 ps -ef | grep ./Client | grep -v grep | awk '{print $2}' | xargs kill >> /dev/null 2>&1
 make clean
 
-for latency in 50 100 200 400 800;
+for latency in 1 10 50 100;
 do
     for round in $(seq 1 $rounds);
     do
