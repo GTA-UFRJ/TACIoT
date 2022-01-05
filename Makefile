@@ -109,7 +109,7 @@ Server_Include_Paths := -Iserver/utils \
 					 -Iclient/ecp \
 					 -IIAS \
 					 -I$(HTTPLIB_DIR)
-Server_C_Flags := -fPIC -Wno-attributes $(Server_Include_Paths)
+Server_C_Flags := -fPIC -Wno-attributes $(Server_Include_Paths) -DLATENCY_MS=$(LATENCY)
 
 # Three configuration modes - Debug, prerelease, release
 #   Debug - Macro DEBUG enabled.

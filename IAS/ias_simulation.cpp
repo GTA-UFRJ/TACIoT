@@ -118,7 +118,7 @@ int ias_verify_attestation_evidence(
     uint8_t* pse_manifest,
     ias_att_report_t* p_attestation_verification_report)
 {
-    std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
+    std::this_thread::sleep_for(std::chrono::milliseconds(2*LATENCY_MS));
     int ret = 0;
     sample_ecc_state_handle_t ecc_state = NULL;
 
@@ -212,7 +212,7 @@ int ias_get_sigrl(
     uint32_t *p_sig_rl_size,
     uint8_t **p_sig_rl)
 {
-    std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
+    std::this_thread::sleep_for(std::chrono::milliseconds(2*LATENCY_MS));
     int ret = 0;
 
     UNUSED(gid);
@@ -249,7 +249,6 @@ int ias_enroll(
     sample_spid_t *p_spid,
     int *p_authentication_token)
 {
-    std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
     UNUSED(sp_credentials);
     UNUSED(p_authentication_token);
 

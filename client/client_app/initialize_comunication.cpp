@@ -61,7 +61,7 @@ int main(void)
     svr.Get(R"(/attest/type=([0-9a-f]+)&size=([0-9a-f]+)&align=([0-9a-f]+)&body=([0-9a-f]+))", 
             [&](const Request& req, Response& res) {
         
-        std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
+        std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS)); 
 
         fprintf(stdout,"\nCliente recebeu mensagem\n");
         

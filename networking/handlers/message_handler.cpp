@@ -138,6 +138,7 @@ int ra_network_send_receive(const char *client_url,
             if (res->status == 200) {
                 // fprintf(stdout, "Response: %s\n", res->body);
                 fprintf(stdout,"\nServidor recebeu: \n");
+                std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
 
                 // Obtem os campos da resposta na forma de string
                 //std::cout << res->body << std::endl;
