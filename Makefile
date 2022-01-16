@@ -46,7 +46,6 @@ SGX_DEBUG ?= 1
 LATENCY ?= 100
 
 HTTPLIB_DIR ?= /home/guiaraujo/cpp-httplib/
-LD_LIBRARY_PATH := $($(LD_LIBRARY_PATH):$(CURDIR)/client/sample_libcrypto/)
 export LD_LIBRARY_PATH
 
 ifeq ($(shell getconf LONG_BIT), 32)
@@ -138,7 +137,7 @@ Server_Cpp_Objects := $(Server_Cpp_Files:.cpp=.o)
 
 App_Name := Server
 
-# Arquivos de publish, query
+# Arquivos de publish
 Publish_Cpp_Files := server/utils/utils.cpp server/utils/utils_sgx.cpp \
 					 client/ecp/ecp.cpp publish/main.cpp
 Publish_Include_Paths := -Iserver/utils \
@@ -162,6 +161,32 @@ Publish_Link_Flags := -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -L. -lsgx_uke
 					 -Wl,-rpath=$(CURDIR)/client/sample_libcrypto -Wl,-rpath=$(CURDIR) -Lserver/utils \
 					 -Lclient/sample_libcrypto -Lclient/ecp -pthread -lsample_libcrypto
 Publish_Cpp_Objects := $(Publish_Cpp_Files:.cpp=.o)
+
+
+# Arquivos de query
+Query_Cpp_Files := server/utils/utils.cpp server/utils/utils_sgx.cpp \
+					 client/ecp/ecp.cpp query/main.cpp
+Query_Include_Paths := -Iserver/utils \
+					 -Inetworking/handlers \
+					 -I$(SGX_SDK)/include \
+					 -I. \
+					 -Iclient/sample_libcrypto \
+					 -Iclient/ecp \
+					 -Iserver/server_app
+Query_C_Flags := -shared -fPIC -Wno-attributes $(Query_Include_Paths) -DLATENCY_MS=$(LATENCY)
+ifeq ($(SGX_DEBUG), 1)
+        Query_C_Flags += -DDEBUG -UNDEBUG -UEDEBUG
+else ifeq ($(SGX_PRERELEASE), 1)
+        Query_C_Flags += -DNDEBUG -DEDEBUG -UDEBUG
+else
+        Query_C_Flags += -DNDEBUG -UEDEBUG -UDEBUG
+endif
+
+Query_Cpp_Flags := $(Query_C_Flags)
+Query_Link_Flags := -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -L. -lsgx_ukey_exchange -lpthread \
+					 -Wl,-rpath=$(CURDIR)/client/sample_libcrypto -Wl,-rpath=$(CURDIR) -Lserver/utils \
+					 -Lclient/sample_libcrypto -Lclient/ecp -pthread -lsample_libcrypto
+Query_Cpp_Objects := $(Query_Cpp_Files:.cpp=.o)
 
 ######## Client Settings ########
 
@@ -252,8 +277,11 @@ endif
 
 .PHONY: all run target Publish
 all: .config_$(Build_Mode)_$(SGX_ARCH)
+	LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./client/sample_libcrypto/
 	@echo $(Server_Cpp_Objects)
 	@$(MAKE) target
+	@$(MAKE) Publish
+	@$(MAKE) Query
 
 ifeq ($(Build_Mode), HW_RELEASE)
 target: Client $(App_Name) $(Enclave_Name) 
@@ -349,6 +377,15 @@ Publish: server/server_app/server_enclave_u.o $(Publish_Cpp_Objects)
 	@$(CXX) $^ -o $@ $(Publish_Link_Flags)
 	@echo "LINK =>  $@"
 
+query/main.o: query/main.cpp 
+	@echo $(CXX) $(SGX_COMMON_CXXFLAGS) $(Query_Cpp_Flags) -c $< -o $@
+	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Query_Cpp_Flags) -c $< -o $@
+	@echo "CXX  <=  $<"
+
+Query: server/server_app/server_enclave_u.o $(Query_Cpp_Objects) 
+	@$(CXX) $^ -o $@ $(Query_Link_Flags)
+	@echo "LINK =>  $@"
+
 ######## Enclave Objects ########
 
 server/server_enclave/server_enclave_t.h: $(SGX_EDGER8R) server/server_enclave/server_enclave.edl
@@ -376,4 +413,4 @@ $(Signed_Enclave_Name): $(Enclave_Name)
 .PHONY: clean
 
 clean:
-	@rm -f .config_* $(App_Name) $(App_Name) $(Enclave_Name) $(Signed_Enclave_Name) $(Server_Cpp_Objects) Client server/server_app/server_enclave_u.* $(Enclave_Cpp_Objects) server/server_enclave/server_enclave_t.* Client.* $(Client_Cpp_Objects) publish/main.o Publish
+	@rm -f .config_* $(App_Name) $(App_Name) $(Enclave_Name) $(Signed_Enclave_Name) $(Server_Cpp_Objects) Client server/server_app/server_enclave_u.* $(Enclave_Cpp_Objects) server/server_enclave/server_enclave_t.* Client.* $(Client_Cpp_Objects) publish/main.o Publish query/main.o Query 

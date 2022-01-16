@@ -71,7 +71,6 @@ int main(int argc, char const *argv[])
     char published_header[32];
     fread(published_header,1,32,db_file);
     uint32_t encrypted_size; 
-    // Obtem tamanho do dado encriptado, aloca memoria e lê resto da linha
 
     // Servidor recebe e serpara parametros
     iot_message_t published_msg;
@@ -96,15 +95,16 @@ int main(int argc, char const *argv[])
             published_msg.encrypted_size = (uint32_t)strtoul(token,NULL,16);
         }
     }
+
     // Obtem mensagem encriptada
-    published_msg.encrypted = (char*)malloc(published_msg.encrypted_size);
+    published_msg.encrypted = (char*)malloc(published_msg.encrypted_size+1);
     fread(published_msg.encrypted,1,published_msg.encrypted_size,db_file);
-    rcv_msg.encrypted[rcv_msg.encrypted_size] = '\0';
+    published_msg.encrypted[published_msg.encrypted_size] = '\0';
     fclose(db_file);
 
     // Procura arquivo do usuario e le a chave
     char seal_path[PATH_MAX_SIZE];
-    sprintf(seal_path, "%s/%s", SEALS_PATH, rcv_msg.pk);
+    sprintf(seal_path, "%s/%s", SEALS_PATH, "72d41281");
     FILE* seal_file = fopen(seal_path, "rb");
     size_t sealed_size = sizeof(sgx_sealed_data_t) + sizeof(uint8_t)*16;
     uint8_t* sealed_data = (uint8_t*)malloc(sealed_size);
@@ -122,7 +122,7 @@ int main(int argc, char const *argv[])
     // Incializa enclave usando sgx_utils
     sgx_enclave_id_t global_eid = 0;
     char token_filename[PATH_MAX_SIZE];
-    sprintf(token_filename, "%s/%s", TOKENS_PATH, rcv_msg.pk);
+    sprintf(token_filename, "%s/%s", TOKENS_PATH, published_msg.pk);
     int sgx_ret = initialize_enclave(&global_eid, token_filename, "server_enclave.signed.so");
     if (sgx_ret<0)
     {
@@ -134,14 +134,21 @@ int main(int argc, char const *argv[])
     // Chama enclave para decriptar dado e encriptar com a chave do cliente 
     sgx_status_t sgx_status;
     sgx_status_t ecall_status;
-    uint8_t queried_data[rcv_msg.encrypted_size];
-    sgx_status = retrive_data(global_eid, &ecall_status,
+    uint8_t queried_data[published_msg.encrypted_size];
+    sgx_status = retrieve_data(global_eid, &ecall_status,
         (sgx_sealed_data_t*)sealed_data,            //chave selada a ser desselada
-        rcv_msg.encrypted,                          //dado a ser decriptado com a chave desselada e enviado
-        rcv_msg.encrypted_size-1,                   //tamanho do dado encriptado
+        published_msg.encrypted,                    //dado a ser decriptado com a chave desselada e enviado
+        published_msg.encrypted_size-1,             //tamanho do dado encriptado
         queried_data                                //dado a ser enviado encriptado com a chave do cliente
-    )
-    queried_data[rcv_msg.encrypted_size] = '\0';
+    );
+    queried_data[published_msg.encrypted_size] = '\0';
+    free(published_msg.encrypted);
+    printf("\n");
+    for (uint8_t j = 0; j < published_msg.encrypted_size; j++)
+    {
+        printf("0x%02x, ", queried_data[j]);
+    }
+    printf("\n");
     
     // Latencia de envio
     std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));

@@ -12,22 +12,26 @@ source environment
 ```
 * Clone the following repository: https://github.com/yhirose/cpp-httplib.git.
 * Set the application environment variables in the config_macros.h file.
+* Enter this repository and run:
+```
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./client/sample_libcrypto/
+```
 
 ## Usage
-To run the project, follow these steps:
+To run the project:
 ```
 make
-LD_LIBRARY_PATH=$LD_LIBRARY_PATH:TACIoT_location/client/sample_libcrypto/
+```
+To test the register application, first, run:
+```
 ./Client
 ```
-In other terminal, repeat the source environment command and then, execute:
+Then, in other configured machine/environment, run:
 ```
 ./Server
 ```
-To test the SGX Publish application:
+To test the SGX Publish and SGX Query applications, run:
 ```
-make
-make Publish
 ./Publish
-./Publish x
+./Query
 ```

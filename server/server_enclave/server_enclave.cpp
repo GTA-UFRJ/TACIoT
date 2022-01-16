@@ -252,3 +252,65 @@ sgx_status_t process_data(
 
     return ret;
 }
+
+sgx_status_t retrieve_data(
+    sgx_sealed_data_t* sealed_key,
+    char* encrypted_data,
+    uint32_t encrypted_data_size,
+    uint8_t* result)
+{
+    // Decripta dado recebido do BD/cópia em disco
+    sgx_status_t ret = SGX_SUCCESS;
+    sgx_aes_gcm_128bit_key_t my_key;
+    for (int i=0; i<16; i++)
+    {
+        my_key[i] = 0;
+    }
+    uint8_t encrypted_bytes[encrypted_data_size];
+    for (uint32_t j=0; j<encrypted_data_size; j++)
+    {
+        encrypted_bytes[j] = (uint8_t)encrypted_data[j];
+    }
+    uint32_t dec_msg_len = encrypted_data_size-12-16;
+    uint8_t decMessage [dec_msg_len];
+    for (int i=0; i<dec_msg_len; i++)
+    {
+        decMessage[i] = 0;
+    }
+    ret = sgx_rijndael128GCM_decrypt(&my_key,
+                                    &encrypted_bytes[0] + 16 + 12,
+                                    dec_msg_len,
+                                    &decMessage[0],
+                                    &encrypted_bytes[0] + 16,
+                                    12,
+                                    NULL,
+                                    0,
+                                    (const sgx_aes_gcm_128bit_tag_t*)
+                                    (&encrypted_bytes[0]));
+
+    // Dessela chave do cliente requisitor
+    uint8_t key[16] = {0}; 
+    uint32_t key_size = (uint32_t)(16*sizeof(uint8_t));
+    ret = sgx_unseal_data(sealed_key, NULL, NULL, &key[0], &key_size);
+    sgx_aes_gcm_128bit_key_t client_key;
+    for (int i=0; i<16; i++)
+    {
+        client_key[i] = key[i];
+    }
+
+    // Encripta dado com a chave do cliente requisitor 
+    uint8_t aes_gcm_iv[12] = {0};
+    memcpy(result+16, aes_gcm_iv, 12);
+    ret = sgx_rijndael128GCM_encrypt(&client_key,
+                                    &decMessage[0],
+                                    dec_msg_len,
+                                    result + 16 + 12,
+                                    &aes_gcm_iv[0],
+                                    12,
+                                    NULL,
+                                    0,
+                                    (sgx_aes_gcm_128bit_tag_t*)
+                                    (result));
+    ocall_print_secret(&result[0], encrypted_data_size);
+    return ret;
+}
