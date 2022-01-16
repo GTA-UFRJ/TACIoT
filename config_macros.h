@@ -62,7 +62,7 @@
 #endif
 
 #ifndef ULTRALIGHT_SIZE
-#define ULTRALIGHT_SIZE 85+1
+#define ULTRALIGHT_SIZE 70
 #endif
 
 #ifndef SEALED_SIZE
@@ -75,4 +75,12 @@
 
 #ifndef DATA_PATH
 #define DATA_PATH "/home/guiaraujo/TACIoT/data"
+#endif
+
+#ifndef DB_PATH
+#define DB_PATH "/home/guiaraujo/TACIoT/database/sample"
+#endif
+
+#ifndef DB_PATH_SIZE
+#define DB_PATH_SIZE 39
 #endif

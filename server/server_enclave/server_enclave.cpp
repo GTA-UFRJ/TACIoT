@@ -189,7 +189,8 @@ sgx_status_t process_data(
     {
         encrypted_bytes[j] = (uint8_t)encrypted_data[j];
     }
-    //ocall_print_secret(&encrypted_bytes[0], encrypted_data_size);
+    // ocall_print_secret(&encrypted_bytes[0], encrypted_data_size);
+    //ocall_print_secret(&key[0], 16);
 
     // Decripta dado com a chave
     // HA UMA VULNERABILIDADE AQUI
@@ -199,6 +200,10 @@ sgx_status_t process_data(
     for (int i=0; i<16; i++)
     {
         my_key[i] = key[i];
+    }
+    for (int i=0; i<dec_msg_len; i++)
+    {
+        decMessage[i] = 0;
     }
     ret = sgx_rijndael128GCM_decrypt(&my_key,
                                     &encrypted_bytes[0] + 16 + 12,
@@ -214,18 +219,22 @@ sgx_status_t process_data(
     //ocall_print_secret(&decMessage[0], dec_msg_len);
 
     // Processa dado
-    uint8_t proc[dec_msg_len+1];
+    uint8_t proc[dec_msg_len];
+    for(int k=0; k<dec_msg_len; k++)
+    {
+        proc[k]=0;
+    }
     if (process != 0)
     {
         // AQUI ENTRA FUNCAO PARA PROCESSAR DADO RECEBIDO
     }
     else {
-        memcpy(proc, decMessage, sizeof(uint8_t)*(dec_msg_len+1));
+        memcpy(proc, decMessage, sizeof(uint8_t)*(dec_msg_len));
     }
-    *processed_result_size = 12+16+dec_msg_len;
+    //*processed_result_size = 12+16+dec_msg_len;
 
     // Encripta dado com a chave
-    size_t result_len = (16 + 12 + sizeof(uint8_t)*(dec_msg_len+1));
+    size_t result_len = (16 + 12 + sizeof(uint8_t)*(dec_msg_len));
     *processed_result_size = (uint32_t)result_len;
     uint8_t aes_gcm_iv[12] = {0};
     memcpy(processed_result+16, aes_gcm_iv, 12);
@@ -239,7 +248,7 @@ sgx_status_t process_data(
                                     0,
                                     (sgx_aes_gcm_128bit_tag_t*)
                                     (processed_result));
-    //ocall_print_secret(&processed_result[0], *processed_result_size);
+    ocall_print_secret(&processed_result[0], *processed_result_size);
 
     return ret;
 }
