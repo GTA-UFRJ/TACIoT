@@ -18,6 +18,6 @@ do
         sleep 2
         { time ./Server > /dev/null 2>&1 ; } 2>> $results_path
         ps -ef | grep ./Client | grep -v grep | awk '{print $2}' | xargs kill >> /dev/null 2>&1
-        make clean
+        sleep 1
     done
 done

@@ -248,7 +248,7 @@ sgx_status_t process_data(
                                     0,
                                     (sgx_aes_gcm_128bit_tag_t*)
                                     (processed_result));
-    ocall_print_secret(&processed_result[0], *processed_result_size);
+    //ocall_print_secret(&processed_result[0], *processed_result_size);
 
     return ret;
 }
@@ -311,6 +311,6 @@ sgx_status_t retrieve_data(
                                     0,
                                     (sgx_aes_gcm_128bit_tag_t*)
                                     (result));
-    ocall_print_secret(&result[0], encrypted_data_size);
+    //ocall_print_secret(&result[0], encrypted_data_size);
     return ret;
 }

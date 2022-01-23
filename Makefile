@@ -139,7 +139,7 @@ App_Name := Server
 
 # Arquivos de publish
 Publish_Cpp_Files := server/utils/utils.cpp server/utils/utils_sgx.cpp \
-					 client/ecp/ecp.cpp publish/main.cpp
+					 client/ecp/ecp.cpp publish/server_publish.cpp
 Publish_Include_Paths := -Iserver/utils \
 					 -Inetworking/handlers \
 					 -I$(SGX_SDK)/include \
@@ -162,6 +162,30 @@ Publish_Link_Flags := -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -L. -lsgx_uke
 					 -Lclient/sample_libcrypto -Lclient/ecp -pthread -lsample_libcrypto
 Publish_Cpp_Objects := $(Publish_Cpp_Files:.cpp=.o)
 
+# Arquivos de send
+Send_Cpp_Files := server/utils/utils.cpp server/utils/utils_sgx.cpp \
+					 client/ecp/ecp.cpp publish/client_publish.cpp
+Send_Include_Paths := -Iserver/utils \
+					 -Inetworking/handlers \
+					 -I$(SGX_SDK)/include \
+					 -I. \
+					 -Iclient/sample_libcrypto \
+					 -Iclient/ecp \
+					 -Iserver/server_app
+Send_C_Flags := -shared -fPIC -Wno-attributes $(Send_Include_Paths) -DLATENCY_MS=$(LATENCY)
+ifeq ($(SGX_DEBUG), 1)
+        Send_C_Flags += -DDEBUG -UNDEBUG -UEDEBUG
+else ifeq ($(SGX_PRERELEASE), 1)
+        Send_C_Flags += -DNDEBUG -DEDEBUG -UDEBUG
+else
+        Send_C_Flags += -DNDEBUG -UEDEBUG -UDEBUG
+endif
+
+Send_Cpp_Flags := $(Send_C_Flags)
+Send_Link_Flags := -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -L. -lsgx_ukey_exchange -lpthread \
+					 -Wl,-rpath=$(CURDIR)/client/sample_libcrypto -Wl,-rpath=$(CURDIR) -Lserver/utils \
+					 -Lclient/sample_libcrypto -Lclient/ecp -pthread -lsample_libcrypto
+Send_Cpp_Objects := $(Send_Cpp_Files:.cpp=.o)
 
 # Arquivos de query
 Query_Cpp_Files := server/utils/utils.cpp server/utils/utils_sgx.cpp \
@@ -281,6 +305,7 @@ all: .config_$(Build_Mode)_$(SGX_ARCH)
 	@echo $(Server_Cpp_Objects)
 	@$(MAKE) target
 	@$(MAKE) Publish
+	@$(MAKE) Send
 	@$(MAKE) Query
 
 ifeq ($(Build_Mode), HW_RELEASE)
@@ -368,13 +393,22 @@ Client: $(Client_Cpp_Objects)
 
 ######## Other Objects ########
 
-publish/main.o: publish/main.cpp 
+publish/server_publish.o: publish/server_publish.cpp 
 	@echo $(CXX) $(SGX_COMMON_CXXFLAGS) $(Publish_Cpp_Flags) -c $< -o $@
 	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Publish_Cpp_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
 
 Publish: server/server_app/server_enclave_u.o $(Publish_Cpp_Objects) 
 	@$(CXX) $^ -o $@ $(Publish_Link_Flags)
+	@echo "LINK =>  $@"
+
+publish/client_publish.o: publish/client_publish.cpp 
+	@echo $(CXX) $(SGX_COMMON_CXXFLAGS) $(Send_Cpp_Flags) -c $< -o $@
+	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Send_Cpp_Flags) -c $< -o $@
+	@echo "CXX  <=  $<"
+
+Send: $(Send_Cpp_Objects) 
+	@$(CXX) $^ -o $@ $(Send_Link_Flags)
 	@echo "LINK =>  $@"
 
 query/main.o: query/main.cpp 
@@ -413,4 +447,4 @@ $(Signed_Enclave_Name): $(Enclave_Name)
 .PHONY: clean
 
 clean:
-	@rm -f .config_* $(App_Name) $(App_Name) $(Enclave_Name) $(Signed_Enclave_Name) $(Server_Cpp_Objects) Client server/server_app/server_enclave_u.* $(Enclave_Cpp_Objects) server/server_enclave/server_enclave_t.* Client.* $(Client_Cpp_Objects) publish/main.o Publish query/main.o Query 
+	@rm -f .config_* $(App_Name) $(App_Name) $(Enclave_Name) $(Signed_Enclave_Name) $(Server_Cpp_Objects) Client server/server_app/server_enclave_u.* $(Enclave_Cpp_Objects) server/server_enclave/server_enclave_t.* Client.* $(Client_Cpp_Objects) publish/client_publish.o Publish publish/server_publish.o Send query/main.o Query 

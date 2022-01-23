@@ -102,6 +102,8 @@ int main(int argc, char const *argv[])
     published_msg.encrypted[published_msg.encrypted_size] = '\0';
     fclose(db_file);
 
+    if (argc < 2) {
+
     // Procura arquivo do usuario e le a chave
     char seal_path[PATH_MAX_SIZE];
     sprintf(seal_path, "%s/%s", SEALS_PATH, "72d41281");
@@ -146,16 +148,13 @@ int main(int argc, char const *argv[])
     printf("\n");
     for (uint8_t j = 0; j < published_msg.encrypted_size; j++)
     {
-        printf("0x%02x, ", queried_data[j]);
+        //printf("0x%02x, ", queried_data[j]);
     }
     printf("\n");
+    }
     
     // Latencia de envio
     std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
-    
-    // Mede o tempo novamente apos o envio para o cliente
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    //std::cout << "\nTime difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[us]" << std::endl;
 
     return 0;
 }
