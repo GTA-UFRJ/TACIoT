@@ -30,8 +30,20 @@ Then, in other configured machine/environment, run:
 ```
 ./Server
 ```
-To test the SGX Publish and SGX Query applications, run:
+To test the SGX Publish application, run:
 ```
 ./Publish
+```
+Then, in other configured machine/environment, run:
+```
+./Send
+```
+To test the SGX Query application, run:
+```
 ./Query
 ```
+
+## Commentary
+This version is current UNSTABLE when receiving a lot of requests.
+We are currently working on some improvments.
+The version used to benchmark is the previous (b5ecf4f on Jan 23).

@@ -56,14 +56,14 @@ int main ()
 
     // Finaliza procedimento
     httplib::Client cli(TEST_CLIENT_URL, COMUNICATION_PORT);
-    httplib::Error err = httplib::Error::Success;
     if (auto res = cli.Get("/stop")) {
         if (res->status == 200) {
             std::cout << res->body << std::endl;
         }
     } else {
-      err = res.error();
-      printf("%d\n", (int)res.error());
+        httplib::Error err = httplib::Error::Success;
+        err = res.error();
+        printf("%d\n", (int)res.error());
     }
 
     return int(error);

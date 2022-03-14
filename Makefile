@@ -139,7 +139,7 @@ App_Name := Server
 
 # Arquivos de publish
 Publish_Cpp_Files := server/utils/utils.cpp server/utils/utils_sgx.cpp \
-					 client/ecp/ecp.cpp publish/server_publish.cpp
+					 client/ecp/ecp.cpp server/server_app/server_publish.cpp
 Publish_Include_Paths := -Iserver/utils \
 					 -Inetworking/handlers \
 					 -I$(SGX_SDK)/include \
@@ -164,7 +164,7 @@ Publish_Cpp_Objects := $(Publish_Cpp_Files:.cpp=.o)
 
 # Arquivos de send
 Send_Cpp_Files := server/utils/utils.cpp server/utils/utils_sgx.cpp \
-					 client/ecp/ecp.cpp publish/client_publish.cpp
+					 client/ecp/ecp.cpp client/client_app/client_publish.cpp
 Send_Include_Paths := -Iserver/utils \
 					 -Inetworking/handlers \
 					 -I$(SGX_SDK)/include \
@@ -393,7 +393,7 @@ Client: $(Client_Cpp_Objects)
 
 ######## Other Objects ########
 
-publish/server_publish.o: publish/server_publish.cpp 
+server/server_app/server_publish.o: server/server_app/server_publish.cpp 
 	@echo $(CXX) $(SGX_COMMON_CXXFLAGS) $(Publish_Cpp_Flags) -c $< -o $@
 	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Publish_Cpp_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
@@ -402,7 +402,7 @@ Publish: server/server_app/server_enclave_u.o $(Publish_Cpp_Objects)
 	@$(CXX) $^ -o $@ $(Publish_Link_Flags)
 	@echo "LINK =>  $@"
 
-publish/client_publish.o: publish/client_publish.cpp 
+client/client_app/client_publish.o: client/client_app/client_publish.cpp 
 	@echo $(CXX) $(SGX_COMMON_CXXFLAGS) $(Send_Cpp_Flags) -c $< -o $@
 	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Send_Cpp_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
@@ -447,4 +447,4 @@ $(Signed_Enclave_Name): $(Enclave_Name)
 .PHONY: clean
 
 clean:
-	@rm -f .config_* $(App_Name) $(App_Name) $(Enclave_Name) $(Signed_Enclave_Name) $(Server_Cpp_Objects) Client server/server_app/server_enclave_u.* $(Enclave_Cpp_Objects) server/server_enclave/server_enclave_t.* Client.* $(Client_Cpp_Objects) publish/client_publish.o Publish publish/server_publish.o Send query/main.o Query 
+	@rm -f .config_* $(App_Name) $(App_Name) $(Enclave_Name) $(Signed_Enclave_Name) $(Server_Cpp_Objects) Client server/server_app/server_enclave_u.* $(Enclave_Cpp_Objects) server/server_enclave/server_enclave_t.* Client.* $(Client_Cpp_Objects) publish/client_publish.o Publish publish/server_publish.o Send query/main.o Query client/client_app/client_publish.o server/server_app/server_publish.o

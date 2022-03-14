@@ -19,6 +19,7 @@
 #include "utils.h"
 #include "server_enclave_u.h"
 #include "ecp.h"                // sample_ec_key_128bit_t
+#include HTTPLIB_PATH
 
 #include "sgx_urts.h"
 #include "sgx_eid.h"
@@ -54,7 +55,7 @@ typedef struct iot_message_t
 void ocall_print_secret(uint8_t* secret, uint32_t secret_size)
 {
     uint32_t i;
-    //char hex_number[5];
+    //char hex_number[5]; 
     printf("\n");
     for (i=0;i<secret_size;i++)
     {
@@ -65,24 +66,47 @@ void ocall_print_secret(uint8_t* secret, uint32_t secret_size)
 
 int main(int argc, char const *argv[])
 {
+    using namespace httplib;
+    Server svr;
 
-    // Pega a mensagem recebida (aqui entaria HTTP)
-    size_t snd_msg_size = 42*sizeof(char)+(98+1)*sizeof(char);
-    char* snd_msg = (char*)malloc(snd_msg_size);
-    sprintf(snd_msg, "pk|72d41281|type|123456|size|%02x|encrypted|", (unsigned int)98+1);
-    printf("\n");
-    for (int i=0; i<int(98+1); i++)
+    // Incializa enclave usando sgx_utils
+    sgx_enclave_id_t global_eid = 0;
+    //char token_filename[PATH_MAX_SIZE];
+    char* token_filename;
+    token_filename = (char*)malloc(PATH_MAX_SIZE*sizeof(char));
+    sprintf(token_filename, "%s/%s", TOKENS_PATH, "72d41281");
+    char enclave_name[25];
+    std::string s = "server_enclave.signed.so";
+    strcpy(enclave_name, s.c_str());
+    int sgx_ret = initialize_enclave(&global_eid, token_filename, enclave_name);
+    if (sgx_ret<0)
     {
-        snd_msg[42+i] = (char)client_data[i];
+        printf("\nFailed to initialize enclave\n");
     }
-    snd_msg[snd_msg_size] = '\0';
-    printf("\n");
+    free(token_filename);
+
+    svr.Get(R"(/publish/size=(\d+)/(.*))", [&](const Request& req, Response& res) {
+    //printf("Recebi\n");
+    char c_size[4];
+    uint32_t size;
+    char* snd_msg;
+    std::string a_size = req.matches[1].str();
+    strcpy(c_size, a_size.c_str());
+    size = (uint32_t)strtoul(c_size, NULL, 10);
+
+    std::string a_snd_msg = req.matches[2].str();
+    snd_msg = (char*)malloc(size*sizeof(char));
+    strncpy(snd_msg, a_snd_msg.c_str(), (size_t)(size-1));
+    snd_msg[size] = '\0';
+    //printf("%s\n", snd_msg);
 
     // Servidor recebe e serpara parametros de acordo com o protocolo Ultralight
     // type|123456|size|0x35|encrypted|AES128(pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281)    
     iot_message_t rcv_msg;
     char* token = strtok(snd_msg, "|");
     int i = 0;
+    char auxiliar[3];
+    unsigned long number;
     while (token != NULL)
     {
         i++;
@@ -109,19 +133,28 @@ int main(int argc, char const *argv[])
         if (i == 5)
         {
             rcv_msg.encrypted_size = (uint32_t)strtoul(token,NULL,16);
-            rcv_msg.encrypted = (char*)malloc(rcv_msg.encrypted_size);
         }
         // Obtem mensagem encriptada
+        
         if (i == 7)
         {
+            rcv_msg.encrypted = (char*)malloc((rcv_msg.encrypted_size+1) * sizeof(char));
             for (uint32_t j=0; j<rcv_msg.encrypted_size; j++)
             {
-                rcv_msg.encrypted[j] = token[j];
+                auxiliar[0] = token[6*j+2];
+                auxiliar[1] = token[6*j+3];
+                auxiliar[2] = '\0';
+                rcv_msg.encrypted[j] = (char)strtoul(auxiliar, NULL, 16);
+                //number = strtoul(auxiliar, NULL, 16);
+                //printf("%s, ", auxiliar);
+                //printf("%lu, ", number);
+                //printf("0x%02x, ", (uint8_t)rcv_msg.encrypted[j]);
             }
             rcv_msg.encrypted[rcv_msg.encrypted_size] = '\0';
+            //printf("\n");
         }
     }
-
+    free(snd_msg);
 
     if (argc < 2){
 
@@ -140,18 +173,6 @@ int main(int argc, char const *argv[])
     else {
         fread(sealed_data,1,sealed_size,seal_file);
         fclose(seal_file);
-    }
-
-    // Incializa enclave usando sgx_utils
-    sgx_enclave_id_t global_eid = 0;
-    char token_filename[PATH_MAX_SIZE];
-    sprintf(token_filename, "%s/%s", TOKENS_PATH, rcv_msg.pk);
-    int sgx_ret = initialize_enclave(&global_eid, token_filename, "server_enclave.signed.so");
-    if (sgx_ret<0)
-    {
-        printf("\nFailed to initialize enclave\n");
-        free(sealed_data);
-        return 1;
     }
 
     // printf("%s", rcv_msg.type);
@@ -174,7 +195,7 @@ int main(int argc, char const *argv[])
     sgx_status = process_data(global_eid, &ecall_status,
         (sgx_sealed_data_t*)sealed_data,            //chave selada a ser desselada
         rcv_msg.encrypted,                          //dado a ser decriptado com a chave desselada e processado
-        rcv_msg.encrypted_size-1,                   //tamanho do dado encriptado
+        rcv_msg.encrypted_size,                     //tamanho do dado encriptado
         decMessageLen,                              //tamanho do vetor alocado com o dado decriptado
         processed_data,                             //dado a ser publicado
         (uint32_t)RESULT_MAX_SIZE,                  //tamanho maximo do buffer com o dado a ser publicado
@@ -194,6 +215,13 @@ int main(int argc, char const *argv[])
     }
     fclose(db_file);
     }
+    
+    free(rcv_msg.encrypted);
+    res.set_content("ack", "text/plain");
 
-    return 0;
+    });
+
+    svr.listen(SERVER_URL, COMUNICATION_PORT_2);
+
+    //return 0;
 }

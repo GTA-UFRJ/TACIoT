@@ -114,7 +114,6 @@ int ra_network_send_receive(const char *client_url,
     // Tenta se comunicar com o cliente x vezes
     int tries = 0;
     int i;
-    bool loop;
     char* type;
     char* status;
     char status0[3];
@@ -171,7 +170,6 @@ int ra_network_send_receive(const char *client_url,
                 // Preenche a estrutura da resposta
                 auxiliar[2] = '\0';
                 i = 0;
-                loop = true;
                 ra_free_network_response_buffer(p_resp_msg);
                 p_resp_msg = (ra_samp_response_header_t*)malloc(sizeof(uint8_t)*(1+2+4+u_size));       
                 p_resp_msg->type = resp_msg.type;
@@ -179,7 +177,7 @@ int ra_network_send_receive(const char *client_url,
                 p_resp_msg->status[1] = resp_msg.status[1];
                 p_resp_msg->size = resp_msg.size;
                 p_resp_msg->align[1] = resp_msg.align[1];
-                for (uint32_t i=0; i<(u_size*2)-1; i=i+2)
+                for (i=0; i<(u_size*2)-1; i=i+2)
                 {
                     auxiliar[0] = res_body[i];
                     auxiliar[1] = res_body[i+1];

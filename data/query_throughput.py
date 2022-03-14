@@ -6,7 +6,7 @@
 import statistics as stats
 
 def main():
-    f = open("./benchmark/secure_query_throughput.txt", 'r')
+    f = open("./benchmark/query_throughput.txt", 'r')
     round = 0
     clientes = [1, 10, 50, 100, 200, 500]
     listaVazoes = []

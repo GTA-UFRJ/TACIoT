@@ -18,6 +18,33 @@
 #include "utils_sgx.h"
 #include "utils.h"
 #include "ecp.h"                // sample_ec_key_128bit_t
+#include "/home/guiaraujo/cpp-httplib/httplib.h"
+
+void send_data(char* , size_t );
+
+void send_data(char* snd_msg, size_t snd_msg_size)
+{
+    char http_message[URL_MAX_SIZE];
+
+    httplib::Client cli(SERVER_URL, COMUNICATION_PORT_2);
+    httplib::Error err = httplib::Error::Success;
+
+    sprintf(http_message, "/publish/size=%d/%s", (int)snd_msg_size, snd_msg);
+    printf("%s\n",http_message);
+    std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
+
+    if (auto res = cli.Get(http_message)) {
+        printf("Enviei\n");
+        if (res->status == 200) {
+            fprintf(stdout,"\n%s\n",res->body.c_str());
+            printf("Recuperei 200\n");
+        }
+    } else {
+        err = res.error();
+        printf("Deu ruim\n");
+        printf("%d\n", (int)res.error());
+    }
+}
 
 // Chave compartilhada pelo registro
 const sample_aes_gcm_128bit_key_t sha_key[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
@@ -29,7 +56,7 @@ int main(int argc, char const *argv[])
     sample_status_t ret;
     uint32_t client_data_size = ULTRALIGHT_SIZE; 
     uint8_t client_data[client_data_size];
-    for (int i=0; i<client_data_size; i++)
+    for (uint32_t i=0; i<client_data_size; i++)
     {
         client_data[i] = (uint8_t)ULTRALIGHT_SAMPLE[i];
     }
@@ -67,21 +94,42 @@ int main(int argc, char const *argv[])
     if(ret == SAMPLE_ERROR_UNEXPECTED) printf("ENCRYPT RESULT: SAMPLE_ERROR_UNEXPECTED");
 
     // Monta mensagem enviada (aqui entraria HTTP)
+    /*
     size_t snd_msg_size = 42*sizeof(char)+(encMessageLen+1)*sizeof(char);
     char* snd_msg = (char*)malloc(snd_msg_size);
     sprintf(snd_msg, "pk|72d41281|type|123456|size|%02x|encrypted|", (unsigned int)encMessageLen+1);
     printf("\n");
-    /*for (int i=0; i<int(encMessageLen+1); i++)
+    for (int i=0; i<int(encMessageLen+1); i++)
     {
         printf("0x%02x, ",encMessage[i]);
         snd_msg[42+i] = (char)encMessage[i];
-    }*/
+    }
     snd_msg[snd_msg_size] = '\0';
     printf("\n");
     free(encMessage);
-    
-    // Aplica latencia de envio 
-    std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
+    */
+
+    size_t snd_msg_size = 43*sizeof(char)+(6*encMessageLen)*sizeof(char);
+    char* snd_msg = (char*)malloc(snd_msg_size);
+    sprintf(snd_msg, "pk|72d41281|type|123456|size|%02x|encrypted|", (unsigned int)encMessageLen);
+    printf("\n");
+    char auxiliar[7];
+    for (int i=0; i<int(encMessageLen); i++)
+    {
+        sprintf(auxiliar, "0x%02x, ",encMessage[i]);
+        snd_msg[42+6*i] = auxiliar[0];
+        snd_msg[42+6*i+1] = auxiliar[1];
+        snd_msg[42+6*i+2] = auxiliar[2];
+        snd_msg[42+6*i+3] = auxiliar[3];
+        snd_msg[42+6*i+4] = auxiliar[4];
+        snd_msg[42+6*i+5] = auxiliar[5];
+    }
+    snd_msg[snd_msg_size] = '\0';
+    printf("\n");
+    free(encMessage);
+
+    send_data(snd_msg, snd_msg_size);
+    free(snd_msg);
 /*
     char key_path[20];
     sprintf(key_path, "insecure_key_file");

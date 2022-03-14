@@ -154,7 +154,7 @@ sgx_status_t put_secret_data(
     } while(0);
 
     // Aqui entra a selagem
-    ret = sgx_seal_data(0, NULL, sizeof(g_secret[0])*16, &g_secret[0], sealed_size, sealed_data);
+    ret = sgx_seal_data(0, NULL, sizeof(g_secret[0])*16, &g_secret[0], (uint32_t)sealed_size, sealed_data);
 
     // Testando deselagem
     uint8_t plaintext[16] = {0};
@@ -197,11 +197,11 @@ sgx_status_t process_data(
     // Solucao: fazer verificacao de tamanho maximo do buffer para evitar overflow na PRM
     uint8_t decMessage [dec_msg_len];
     sgx_aes_gcm_128bit_key_t my_key;
-    for (int i=0; i<16; i++)
+    for (uint32_t i=0; i<16; i++)
     {
         my_key[i] = key[i];
     }
-    for (int i=0; i<dec_msg_len; i++)
+    for (uint32_t i=0; i<dec_msg_len; i++)
     {
         decMessage[i] = 0;
     }
@@ -220,13 +220,15 @@ sgx_status_t process_data(
 
     // Processa dado
     uint8_t proc[dec_msg_len];
-    for(int k=0; k<dec_msg_len; k++)
+    for(uint32_t k=0; k<dec_msg_len; k++)
     {
         proc[k]=0;
     }
     if (process != 0)
     {
-        // AQUI ENTRA FUNCAO PARA PROCESSAR DADO RECEBIDO
+        /*
+        AQUI ENTRA FUNCAO PARA PROCESSAR DADO RECEBIDO
+        */   
     }
     else {
         memcpy(proc, decMessage, sizeof(uint8_t)*(dec_msg_len));
@@ -262,7 +264,7 @@ sgx_status_t retrieve_data(
     // Decripta dado recebido do BD/cópia em disco
     sgx_status_t ret = SGX_SUCCESS;
     sgx_aes_gcm_128bit_key_t my_key;
-    for (int i=0; i<16; i++)
+    for (uint32_t i=0; i<16; i++)
     {
         my_key[i] = 0;
     }
@@ -273,7 +275,7 @@ sgx_status_t retrieve_data(
     }
     uint32_t dec_msg_len = encrypted_data_size-12-16;
     uint8_t decMessage [dec_msg_len];
-    for (int i=0; i<dec_msg_len; i++)
+    for (uint32_t i=0; i<dec_msg_len; i++)
     {
         decMessage[i] = 0;
     }
@@ -293,7 +295,7 @@ sgx_status_t retrieve_data(
     uint32_t key_size = (uint32_t)(16*sizeof(uint8_t));
     ret = sgx_unseal_data(sealed_key, NULL, NULL, &key[0], &key_size);
     sgx_aes_gcm_128bit_key_t client_key;
-    for (int i=0; i<16; i++)
+    for (uint32_t i=0; i<16; i++)
     {
         client_key[i] = key[i];
     }
@@ -314,3 +316,28 @@ sgx_status_t retrieve_data(
     //ocall_print_secret(&result[0], encrypted_data_size);
     return ret;
 }
+/*
+Função secure_aggregation
+    tipo = 123456
+    char* dados[quantidade_dados]
+    int tamanho_dados[qauntidade_dados]
+    ocall_read_db_entry(&dados[0], &quantidade_dados[0])
+         Aqui dentro a gente faz o seguinte:
+         + Abre arquivo BD
+         + Loop enquanto ainda nao tiver a quantidade de dados
+             + Lê a linha
+             + Separa a linha em partes
+             + Verifica o tipo
+             + Coloca o dado encriptado na lista 
+             + coloca tamanho do dado em outra lista
+             + Incrementa quantidade de dados
+             + Incrementa linha
+             + Se terminou arquivo, quantidade de dados acabou
+         + Fecha arquivo BD
+    Loop na lista com dados encriptados
+        Verifica tamanho na lista de tamanhos 
+        Decripta dado
+        Acumula soma
+    Monta mensagem a ser armazenada no BD
+    Copia mensagem para o proc
+*/
