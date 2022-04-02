@@ -167,7 +167,7 @@ sgx_status_t put_secret_data(
 
 sgx_status_t process_data(
     sgx_sealed_data_t* sealed_key,
-    char* encrypted_data,
+    uint8_t* encrypted_data,
     uint32_t encrypted_data_size,
     uint32_t dec_msg_len, 
     uint8_t*  processed_result,
@@ -187,7 +187,7 @@ sgx_status_t process_data(
     uint8_t encrypted_bytes[encrypted_data_size];
     for (uint32_t j=0; j<encrypted_data_size; j++)
     {
-        encrypted_bytes[j] = (uint8_t)encrypted_data[j];
+        encrypted_bytes[j] = encrypted_data[j];
     }
     // ocall_print_secret(&encrypted_bytes[0], encrypted_data_size);
     //ocall_print_secret(&key[0], 16);
@@ -250,8 +250,9 @@ sgx_status_t process_data(
                                     0,
                                     (sgx_aes_gcm_128bit_tag_t*)
                                     (processed_result));
-    //ocall_print_secret(&processed_result[0], *processed_result_size);
 
+    //ocall_print_secret(&processed_result[0], *processed_result_size);
+    processed_result[*processed_result_size] = 0;
     return ret;
 }
 

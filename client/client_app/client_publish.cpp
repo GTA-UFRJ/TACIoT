@@ -116,7 +116,7 @@ int main(int argc, char const *argv[])
     char auxiliar[7];
     for (int i=0; i<int(encMessageLen); i++)
     {
-        sprintf(auxiliar, "0x%02x, ",encMessage[i]);
+        sprintf(auxiliar, "0x%02x--",encMessage[i]);
         snd_msg[42+6*i] = auxiliar[0];
         snd_msg[42+6*i+1] = auxiliar[1];
         snd_msg[42+6*i+2] = auxiliar[2];

@@ -48,7 +48,7 @@ typedef struct iot_message_t
     char pk[9];
     char type[7];
     uint32_t encrypted_size;
-    char* encrypted;
+    uint8_t* encrypted;
 } iot_message_t;
 
 // Interface para enclave imprimir segredo usando OCALL (INSEGURA! Apenas para testes)
@@ -62,6 +62,146 @@ void ocall_print_secret(uint8_t* secret, uint32_t secret_size)
         printf("0x%02x, ", secret[i]);
     }
     printf("\n");
+}
+/*
+char hex2char(char *a)
+{
+    char val = 0;
+    (a[0] <= 57) ? val += (a[0]-'0')*0x10 : val += (a[0]-'a'+10)*0x10;
+    (a[1] <= 57) ? val += (a[1]-'0') : val += (a[1]-'a'+10);
+    return val;
+}
+*/
+
+iot_message_t parse_request(uint32_t size, char* msg)
+{
+    iot_message_t rcv_msg;
+    char* token = strtok_r(msg, "|", &msg);
+    int i = 0;
+    char auxiliar[3];
+    while (token != NULL)
+    {
+        i++;
+        token = strtok_r(NULL, "|", &msg);
+        // Obtem chave do cliente 
+        if (i == 1)
+        {
+            for (uint32_t j=0; j<8; j++)
+            {
+                rcv_msg.pk[j] = token[j];
+            }
+            rcv_msg.pk[8] = '\0';
+        }
+        // Obtem tipo do dado
+        if (i == 3)
+        {
+            for (uint32_t j=0; j<6; j++)
+            {
+                rcv_msg.type[j] = token[j];
+            }
+            rcv_msg.type[7] = '\0';
+        }
+        // Obtem tamanho da mensagem encriptada
+        if (i == 5)
+        {
+            rcv_msg.encrypted_size = (uint32_t)strtoul(token,NULL,16);
+        }
+        // Obtem mensagem encriptada
+        if (i == 7)
+        {
+            rcv_msg.encrypted = (uint8_t*)malloc((rcv_msg.encrypted_size+1) * sizeof(uint8_t));
+            if (rcv_msg.encrypted == NULL)
+            {
+                printf("Erro de alocação\n");
+            }
+            for (uint32_t j=0; j<rcv_msg.encrypted_size; j++)
+            {
+                auxiliar[0] = token[6*j+2];
+                auxiliar[1] = token[6*j+3];
+                auxiliar[2] = '\0';
+                rcv_msg.encrypted[j] = (uint8_t)strtoul(auxiliar, NULL, 16);
+            }
+            rcv_msg.encrypted[rcv_msg.encrypted_size] = 0;
+        }
+    }
+    return rcv_msg;
+}
+
+iot_message_t parse_request_test (uint32_t size, char* msg){
+    iot_message_t rcv_msg;
+    sprintf(rcv_msg.pk, "72d41281");
+    sprintf(rcv_msg.type, "123456");
+    rcv_msg.encrypted_size = 0x62;
+    rcv_msg.encrypted = (uint8_t*)malloc((rcv_msg.encrypted_size+1) * sizeof(uint8_t));
+    for (uint32_t j=0; j<rcv_msg.encrypted_size; j++)
+    {
+        rcv_msg.encrypted[j] = (uint8_t)client_data[j];
+    }
+    rcv_msg.encrypted[rcv_msg.encrypted_size] = 0;
+    return rcv_msg;
+}
+
+uint32_t secure_msg_processing (iot_message_t rcv_msg, sgx_enclave_id_t global_eid, uint8_t* processed_data){
+
+    // Procura arquivo do usuario e le a chave
+    char seal_path[PATH_MAX_SIZE];
+    sprintf(seal_path, "%s/%s", SEALS_PATH, rcv_msg.pk);
+    FILE* seal_file = fopen(seal_path, "rb");
+    size_t sealed_size = sizeof(sgx_sealed_data_t) + sizeof(uint8_t)*16;
+    uint8_t* sealed_data = (uint8_t*)malloc(sealed_size);
+    if (seal_file == NULL) {
+        printf("\nWarning: Failed to open the seal file \"%s\".\n", seal_path);
+        fclose(seal_file);
+        free(sealed_data);
+        return 1;
+    }
+    else {
+        fread(sealed_data,1,sealed_size,seal_file);
+        fclose(seal_file);
+    }
+
+    // printf("%s", rcv_msg.type);
+    // Chama enclave para desselar chave, decriptar com a chave, processar e rertornar resultado encriptado
+    // type|123456|size|0x35|encrypted|AES128(pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281)
+    sgx_status_t ecall_status;
+    sgx_status_t sgx_status;
+    uint32_t real_size;
+    uint32_t decMessageLen = rcv_msg.encrypted_size - (SAMPLE_AESGCM_MAC_SIZE + SAMPLE_AESGCM_IV_SIZE);
+    sgx_status = process_data(global_eid, &ecall_status,
+        (sgx_sealed_data_t*)sealed_data,            //chave selada a ser desselada
+        rcv_msg.encrypted,                          //dado a ser decriptado com a chave desselada e processado
+        rcv_msg.encrypted_size,                     //tamanho do dado encriptado
+        decMessageLen,                              //tamanho do vetor alocado com o dado decriptado
+        processed_data,                             //dado a ser publicado
+        (uint32_t)RESULT_MAX_SIZE,                  //tamanho maximo do buffer com o dado a ser publicado
+        &real_size,                                 //tamanho real do dado a ser publicado
+        0                                           //nao aplica processamento computacionalmente custoso               
+    );
+    return 98;
+}
+
+void database_write (iot_message_t rcv_msg, uint8_t* processed_data, uint32_t real_size)
+{
+    char publish_header[5+6+6+4+11+1];
+    sprintf(publish_header, "type|%s|size|0x%02x|encrypted|", rcv_msg.type, rcv_msg.encrypted_size);
+    char db_path[DB_PATH_SIZE];
+    sprintf(db_path, "%s", DB_PATH);
+    FILE* db_file = fopen(db_path, "ab");
+    if (db_file != NULL) {
+        fwrite(publish_header, 1, (size_t)5+6+6+4+11+1, db_file);
+    }
+    fclose(db_file);
+
+    // Escreve resultado em BD (cópia em disco, no caso)
+    // type|123456|size|0x35|encrypted|AES128(pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281)   
+    sprintf(db_path, "%s", DB_PATH);
+    db_file = fopen(db_path, "ab");
+    if (db_file != NULL) {
+        fwrite(processed_data, 1, (size_t)real_size, db_file);
+        char nl = '\n';
+        fwrite(&nl, 1, sizeof(char), db_file);
+    }
+    fclose(db_file);
 }
 
 int main(int argc, char const *argv[])
@@ -87,6 +227,8 @@ int main(int argc, char const *argv[])
 
     svr.Get(R"(/publish/size=(\d+)/(.*))", [&](const Request& req, Response& res) {
     //printf("Recebi\n");
+    // Aplica latencia de envio 
+    std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
     char c_size[4];
     uint32_t size;
     char* snd_msg;
@@ -103,117 +245,20 @@ int main(int argc, char const *argv[])
     // Servidor recebe e serpara parametros de acordo com o protocolo Ultralight
     // type|123456|size|0x35|encrypted|AES128(pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281)    
     iot_message_t rcv_msg;
-    char* token = strtok(snd_msg, "|");
-    int i = 0;
-    char auxiliar[3];
-    unsigned long number;
-    while (token != NULL)
-    {
-        i++;
-        token = strtok(NULL, "|");
-        // Obtem chave do cliente 
-        if (i == 1)
-        {
-            for (uint32_t j=0; j<8; j++)
-            {
-                rcv_msg.pk[j] = token[j];
-            }
-            rcv_msg.pk[8] = '\0';
-        }
-        // Obtem tipo do dado
-        if (i == 3)
-        {
-            for (uint32_t j=0; j<6; j++)
-            {
-                rcv_msg.type[j] = token[j];
-            }
-            rcv_msg.type[7] = '\0';
-        }
-        // Obtem tamanho da mensagem encriptada
-        if (i == 5)
-        {
-            rcv_msg.encrypted_size = (uint32_t)strtoul(token,NULL,16);
-        }
-        // Obtem mensagem encriptada
-        
-        if (i == 7)
-        {
-            rcv_msg.encrypted = (char*)malloc((rcv_msg.encrypted_size+1) * sizeof(char));
-            for (uint32_t j=0; j<rcv_msg.encrypted_size; j++)
-            {
-                auxiliar[0] = token[6*j+2];
-                auxiliar[1] = token[6*j+3];
-                auxiliar[2] = '\0';
-                rcv_msg.encrypted[j] = (char)strtoul(auxiliar, NULL, 16);
-                //number = strtoul(auxiliar, NULL, 16);
-                //printf("%s, ", auxiliar);
-                //printf("%lu, ", number);
-                //printf("0x%02x, ", (uint8_t)rcv_msg.encrypted[j]);
-            }
-            rcv_msg.encrypted[rcv_msg.encrypted_size] = '\0';
-            //printf("\n");
-        }
-    }
+    //rcv_msg = parse_request_test(size, snd_msg);
+    rcv_msg = parse_request(size, snd_msg);
     free(snd_msg);
 
-    if (argc < 2){
-
-    // Procura arquivo do usuario e le a chave
-    char seal_path[PATH_MAX_SIZE];
-    sprintf(seal_path, "%s/%s", SEALS_PATH, rcv_msg.pk);
-    FILE* seal_file = fopen(seal_path, "rb");
-    size_t sealed_size = sizeof(sgx_sealed_data_t) + sizeof(uint8_t)*16;
-    uint8_t* sealed_data = (uint8_t*)malloc(sealed_size);
-    if (seal_file == NULL) {
-        printf("\nWarning: Failed to open the seal file \"%s\".\n", seal_path);
-        fclose(seal_file);
-        free(sealed_data);
-        return 1;
+    if (*argv[1] == 'i')
+    {
+        database_write (rcv_msg, rcv_msg.encrypted, rcv_msg.encrypted_size);
     }
-    else {
-        fread(sealed_data,1,sealed_size,seal_file);
-        fclose(seal_file);
-    }
-
-    // printf("%s", rcv_msg.type);
-    // Chama enclave para desselar chave, decriptar com a chave, processar e rertornar resultado encriptado
-    // type|123456|size|0x35|encrypted|AES128(pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281)
-    uint8_t processed_data [RESULT_MAX_SIZE];
-    sgx_status_t ecall_status;
-    sgx_status_t sgx_status;
-    uint32_t real_size;
-    uint32_t decMessageLen = rcv_msg.encrypted_size-1 - (SAMPLE_AESGCM_MAC_SIZE + SAMPLE_AESGCM_IV_SIZE);
-    char publish_header[5+6+6+4+11+1];
-    sprintf(publish_header, "type|%s|size|0x%02x|encrypted|", rcv_msg.type, rcv_msg.encrypted_size);
-    char db_path[DB_PATH_SIZE];
-    sprintf(db_path, "%s", DB_PATH);
-    FILE* db_file = fopen(db_path, "ab");
-    if (db_file != NULL) {
-        fwrite(publish_header, 1, (size_t)5+6+6+4+11+1, db_file);
-    }
-    fclose(db_file);
-    sgx_status = process_data(global_eid, &ecall_status,
-        (sgx_sealed_data_t*)sealed_data,            //chave selada a ser desselada
-        rcv_msg.encrypted,                          //dado a ser decriptado com a chave desselada e processado
-        rcv_msg.encrypted_size,                     //tamanho do dado encriptado
-        decMessageLen,                              //tamanho do vetor alocado com o dado decriptado
-        processed_data,                             //dado a ser publicado
-        (uint32_t)RESULT_MAX_SIZE,                  //tamanho maximo do buffer com o dado a ser publicado
-        &real_size,                                 //tamanho real do dado a ser publicado
-        0                                           //nao aplica processamento computacionalmente custoso               
-    );
-    processed_data[real_size] = '\0';
-
-    // Escreve resultado em BD (cópia em disco, no caso)
-    // type|123456|size|0x35|encrypted|AES128(pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281)   
-    sprintf(db_path, "%s", DB_PATH);
-    db_file = fopen(db_path, "ab");
-    if (db_file != NULL) {
-        fwrite(processed_data, 1, (size_t)real_size, db_file);
-        char nl = '\n';
-        fwrite(&nl, 1, sizeof(char), db_file);
-    }
-    fclose(db_file);
+    if (*argv[1] == 's')
+    {
+        uint8_t processed_data [RESULT_MAX_SIZE];
+        uint32_t real_size;
+        real_size = secure_msg_processing(rcv_msg, global_eid, processed_data);
+        database_write (rcv_msg, processed_data, real_size);
     }
     
     free(rcv_msg.encrypted);

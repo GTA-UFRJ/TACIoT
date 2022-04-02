@@ -43,7 +43,7 @@ SGX_SDK ?= /opt/intel/sgxsdk
 SGX_MODE ?= HW
 SGX_ARCH ?= x64
 SGX_DEBUG ?= 1
-LATENCY ?= 100
+LATENCY ?= 0
 
 HTTPLIB_DIR ?= /home/guiaraujo/cpp-httplib/
 export LD_LIBRARY_PATH

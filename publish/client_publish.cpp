@@ -80,8 +80,6 @@ int main(int argc, char const *argv[])
     printf("\n");
     free(encMessage);
     
-    // Aplica latencia de envio 
-    std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
 /*
     char key_path[20];
     sprintf(key_path, "insecure_key_file");
