@@ -1,11 +1,9 @@
-# Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
-# Autor: Guilherme Araujo Thomaz
-# Data da ultima modificacao: 23/12/2021
-# Descricao: gera cliente e servidor 
-#  
-# Este codigo foi modificado seguindo as permissoes da licenca
-# da Intel Corporation, apresentadas a seguir
-#
+# Teleinformatic and Automation Group (GTA, Coppe, UFRJ)
+# Author: Guilherme Araujo Thomaz
+# Description: generate client and server
+# 
+# This code was modified following access permissions defined
+# by Intel Corporation license, presented as follows
 #
 # Copyright (C) 2011-2020 Intel Corporation. All rights reserved.
 #
@@ -93,21 +91,22 @@ else
 	Urts_Library_Name := sgx_urts
 endif
 
-# ARQUIVOS C++ DO SERVIDOR
+Server_Cpp_Files := server/server_app/server.cpp \
+					server/server_app/server_publish.cpp \
+					server/server_app/register_client.cpp \
+					utils/utils.cpp \
+					utils/utils_sgx.cpp \
+					utils/message_handler.cpp
 
+Server_Include_Paths := -Iutils \
+					 	-I$(SGX_SDK)/include \
+					 	-I. \
+					 	-Iclient \
+					 	-Isample_libcrypto \
+					 	-Iecp \
+					 	-IIAS \
+					 	-I$(HTTPLIB_DIR)
 
-# CAMINHOS ONDE ESTAO OS INCLUDES
-Server_Cpp_Files := server/server_app/register_client.cpp server/utils/utils.cpp server/utils/utils_sgx.cpp \
-					server/server_app/test.cpp networking/handlers/message_handler.cpp 
-Server_Include_Paths := -Iserver/utils \
-					 -Inetworking/handlers \
-					 -I$(SGX_SDK)/include \
-					 -I. \
-					 -Iclient/client_app \
-					 -Iclient/sample_libcrypto \
-					 -Iclient/ecp \
-					 -IIAS \
-					 -I$(HTTPLIB_DIR)
 Server_C_Flags := -fPIC -Wno-attributes $(Server_Include_Paths) -DLATENCY_MS=$(LATENCY)
 
 # Three configuration modes - Debug, prerelease, release
@@ -121,11 +120,21 @@ else ifeq ($(SGX_PRERELEASE), 1)
 else
         Server_C_Flags += -DNDEBUG -UEDEBUG -UDEBUG
 endif
-
 Server_Cpp_Flags := $(Server_C_Flags)
-Server_Link_Flags := -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -L. -lsgx_ukey_exchange -lpthread \
-					 -Lserver/server_app -Wl,-rpath=$(CURDIR)/client/sample_libcrypto -Wl,-rpath=$(CURDIR) -Lserver/utils \
-					 -LIAS -Lclient/client_app -Lclient/sample_libcrypto -Lclient/ecp -pthread -lsample_libcrypto 
+
+Server_Link_Flags := -L$(SGX_LIBRARY_PATH) \
+					 -L. \
+					 -Lserver/server/server_app \
+					 -Lutils \
+					 -LIAS \
+					 -Lsample_libcrypto \
+					 -Lecp \
+					 -l$(Urts_Library_Name) \
+					 -lsgx_ukey_exchange \
+					 -lpthread \
+					 -lsample_libcrypto \
+					 -Wl,-rpath=$(CURDIR)/sample_libcrypto \
+					 -Wl,-rpath=$(CURDIR) 
 
 ifneq ($(SGX_MODE), HW)
 	Server_Link_Flags += -lsgx_epid_sim -lsgx_quote_ex_sim
@@ -135,103 +144,48 @@ endif
 
 Server_Cpp_Objects := $(Server_Cpp_Files:.cpp=.o)
 
-App_Name := Server
-
-# Arquivos de publish
-Publish_Cpp_Files := server/utils/utils.cpp server/utils/utils_sgx.cpp \
-					 client/ecp/ecp.cpp server/server_app/server_publish.cpp
-Publish_Include_Paths := -Iserver/utils \
-					 -Inetworking/handlers \
-					 -I$(SGX_SDK)/include \
-					 -I. \
-					 -Iclient/sample_libcrypto \
-					 -Iclient/ecp \
-					 -Iserver/server_app
-Publish_C_Flags := -shared -fPIC -Wno-attributes $(Publish_Include_Paths) -DLATENCY_MS=$(LATENCY)
-ifeq ($(SGX_DEBUG), 1)
-        Publish_C_Flags += -DDEBUG -UNDEBUG -UEDEBUG
-else ifeq ($(SGX_PRERELEASE), 1)
-        Publish_C_Flags += -DNDEBUG -DEDEBUG -UDEBUG
-else
-        Publish_C_Flags += -DNDEBUG -UEDEBUG -UDEBUG
-endif
-
-Publish_Cpp_Flags := $(Publish_C_Flags)
-Publish_Link_Flags := -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -L. -lsgx_ukey_exchange -lpthread \
-					 -Wl,-rpath=$(CURDIR)/client/sample_libcrypto -Wl,-rpath=$(CURDIR) -Lserver/utils \
-					 -Lclient/sample_libcrypto -Lclient/ecp -pthread -lsample_libcrypto
-Publish_Cpp_Objects := $(Publish_Cpp_Files:.cpp=.o)
-
-# Arquivos de send
-Send_Cpp_Files := server/utils/utils.cpp server/utils/utils_sgx.cpp \
-					 client/ecp/ecp.cpp client/client_app/client_publish.cpp
-Send_Include_Paths := -Iserver/utils \
-					 -Inetworking/handlers \
-					 -I$(SGX_SDK)/include \
-					 -I. \
-					 -Iclient/sample_libcrypto \
-					 -Iclient/ecp \
-					 -Iserver/server_app
-Send_C_Flags := -shared -fPIC -Wno-attributes $(Send_Include_Paths) -DLATENCY_MS=$(LATENCY)
-ifeq ($(SGX_DEBUG), 1)
-        Send_C_Flags += -DDEBUG -UNDEBUG -UEDEBUG
-else ifeq ($(SGX_PRERELEASE), 1)
-        Send_C_Flags += -DNDEBUG -DEDEBUG -UDEBUG
-else
-        Send_C_Flags += -DNDEBUG -UEDEBUG -UDEBUG
-endif
-
-Send_Cpp_Flags := $(Send_C_Flags)
-Send_Link_Flags := -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -L. -lsgx_ukey_exchange -lpthread \
-					 -Wl,-rpath=$(CURDIR)/client/sample_libcrypto -Wl,-rpath=$(CURDIR) -Lserver/utils \
-					 -Lclient/sample_libcrypto -Lclient/ecp -pthread -lsample_libcrypto
-Send_Cpp_Objects := $(Send_Cpp_Files:.cpp=.o)
-
-# Arquivos de query
-Query_Cpp_Files := server/utils/utils.cpp server/utils/utils_sgx.cpp \
-					 client/ecp/ecp.cpp query/main.cpp
-Query_Include_Paths := -Iserver/utils \
-					 -Inetworking/handlers \
-					 -I$(SGX_SDK)/include \
-					 -I. \
-					 -Iclient/sample_libcrypto \
-					 -Iclient/ecp \
-					 -Iserver/server_app
-Query_C_Flags := -shared -fPIC -Wno-attributes $(Query_Include_Paths) -DLATENCY_MS=$(LATENCY)
-ifeq ($(SGX_DEBUG), 1)
-        Query_C_Flags += -DDEBUG -UNDEBUG -UEDEBUG
-else ifeq ($(SGX_PRERELEASE), 1)
-        Query_C_Flags += -DNDEBUG -DEDEBUG -UDEBUG
-else
-        Query_C_Flags += -DNDEBUG -UEDEBUG -UDEBUG
-endif
-
-Query_Cpp_Flags := $(Query_C_Flags)
-Query_Link_Flags := -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -L. -lsgx_ukey_exchange -lpthread \
-					 -Wl,-rpath=$(CURDIR)/client/sample_libcrypto -Wl,-rpath=$(CURDIR) -Lserver/utils \
-					 -Lclient/sample_libcrypto -Lclient/ecp -pthread -lsample_libcrypto
-Query_Cpp_Objects := $(Query_Cpp_Files:.cpp=.o)
+Server_Name := Server
 
 ######## Client Settings ########
 
-Client_Cpp_Files := client/ecp/ecp.cpp IAS/ias_simulation.cpp client/client_app/request_register.cpp \
-					server/utils/utils.cpp client/client_app/initialize_comunication.cpp
-Client_Include_Paths := -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/libcxx -I.
-Client_C_Flags := -shared -fPIC -Wno-attributes -I$(SGX_SDK)/include \
-						-Iclient/sample_libcrypto \
+Client_Cpp_Files := client/cli.cpp \
+					client/request_register.cpp \
+					client/initialize_communication.cpp \
+					client/client_publish.cpp \
+					client/encryption.cpp \
+					ecp/ecp.cpp \
+					IAS/ias_simulation.cpp \
+					utils/utils.cpp \
+					utils/message_handler.cpp
+
+Client_Include_Paths := -I. \
+						-Iclient \
+						-Iecp \
 						-IIAS \
-						-Iclient/ecp \
-						-Iclient/client_app \
-						-Iclient/ecp \
-						-Iserver/utils \
-					 	-Inetworking/handlers \
-					 	-I$(HTTPLIB_DIR) \
-						-I. \
-						-DLATENCY_MS=$(LATENCY)
+						-Iutils \
+						-Isample_libcrypto \
+						-I$(SGX_SDK)/include \
+					 	-I$(HTTPLIB_DIR) 
+
+Client_C_Flags := -shared -fPIC -Wno-attributes -I$(SGX_SDK)/include $(Client_Include_Paths) -DLATENCY_MS=$(LATENCY)
+
 Client_Cpp_Flags := $(Client_C_Flags)
-Client_Link_Flags := -L$(SGX_LIBRARY_PATH) -lsample_libcrypto -Lclient/sample_libcrypto -pthread
+
+Client_Link_Flags := -L$(SGX_LIBRARY_PATH) \
+					 -L. \
+					 -lsample_libcrypto \
+					 -Lsample_libcrypto \
+					 -pthread \
+					 -l$(Urts_Library_Name) \
+					 -lpthread \
+					 -Wl,-rpath=$(CURDIR)/sample_libcrypto \
+					 -Wl,-rpath=$(CURDIR) \
+					 -Lutils \
+					 -Lecp
 
 Client_Cpp_Objects := $(Client_Cpp_Files:.cpp=.o)
+
+Client_Name := Client
 
 ######## Enclave Settings ########
 
@@ -299,17 +253,12 @@ else
 endif
 endif
 
-.PHONY: all run target Publish
+.PHONY: all run target 
 all: .config_$(Build_Mode)_$(SGX_ARCH)
-	LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./client/sample_libcrypto/
-	@echo $(Server_Cpp_Objects)
 	@$(MAKE) target
-	@$(MAKE) Publish
-	@$(MAKE) Send
-	@$(MAKE) Query
 
 ifeq ($(Build_Mode), HW_RELEASE)
-target: Client $(App_Name) $(Enclave_Name) 
+target: $(Client_Name) $(Server_Name) $(Enclave_Name) 
 	@echo "The project has been built in release hardware mode."
 	@echo "Please sign the $(Enclave_Name) first with your signing key before you run the $(App_Name) to launch and access the enclave."
 	@echo "To sign the enclave use the command:"
@@ -317,7 +266,7 @@ target: Client $(App_Name) $(Enclave_Name)
 	@echo "You can also sign the enclave using an external signing tool."
 	@echo "To build the project in simulation mode set SGX_MODE=SIM. To build the project in prerelease mode set SGX_PRERELEASE=1 and SGX_MODE=HW."
 else
-target: Client $(App_Name) $(Signed_Enclave_Name)
+target: $(Client_Name) $(Server_Name) $(Signed_Enclave_Name)
 ifeq ($(Build_Mode), HW_DEBUG)
 	@echo "The project has been built in debug hardware mode."
 else ifeq ($(Build_Mode), SIM_DEBUG)
@@ -333,91 +282,67 @@ endif
 
 run: all
 ifneq ($(Build_Mode), HW_RELEASE)
-	@$(CURDIR)/$(App_Name) 	
-	@echo "RUN  =>  $(App_Name) [$(SGX_MODE)|$(SGX_ARCH), OK]"
+	@$(CURDIR)/$(Client_Name) 	
+	@$(CURDIR)/$(Server_Name) 	
+	@$(CURDIR)/$(Enclave_Name) 	
+	@echo "RUN  => $(Client_Name) $(Server_Name) [$(SGX_MODE)|$(SGX_ARCH), OK]"
 endif
 
 .config_$(Build_Mode)_$(SGX_ARCH):
-	@rm -f .config_* $(App_Name) $(App_Name) $(Enclave_Name) $(Signed_Enclave_Name) $(Server_Cpp_Objects) server/server_app/server_enclave_u.* $(Enclave_Cpp_Objects) server/server_enclave/server_enclave_t.* Client.* $(Client_Cpp_Objects)
+	@rm -f .config_* \
+	$(Server_Name) \
+	$(Enclave_Name) \
+	$(Signed_Enclave_Name) \
+	$(Server_Cpp_Objects) \
+	server/server_app/server_enclave_u.* \
+	$(Enclave_Cpp_Objects) \
+	server/server_enclave/server_enclave_t.* \
+	Client.* \
+	$(Client_Cpp_Objects)
 	@touch .config_$(Build_Mode)_$(SGX_ARCH)
+
+######## Auxiliary Objects ########
+
+utils/%.o: utils/%.cpp 
+	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Server_Cpp_Flags) -c $< -o $@
+	@echo "CXX  <=  $<"
+
+ecp/%.o: ecp/%.cpp utils/utils.cpp
+	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Client_Cpp_Flags) -c $< -o $@
+	@echo "CXX  <=  $<"
+
+IAS/%.o: IAS/%.cpp ecp/ecp.cpp
+	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Client_Cpp_Flags) -c $< -o $@
+	@echo "CXX  <=  $<"
 
 ######## Server Objects ########
 
-server/sevrer_app/server_enclave_u.h: $(SGX_EDGER8R) server/server_enclave/server_enclave.edl
+server/server_app/server_enclave_u.h: $(SGX_EDGER8R) server/server_enclave/server_enclave.edl
 	@cd server/server_app && $(SGX_EDGER8R) --untrusted ../server_enclave/server_enclave.edl --search-path ../server_enclave --search-path $(SGX_SDK)/include
 	@echo "GEN  =>  $@"
 
-server/server_app/server_enclave_u.c: server/sevrer_app/server_enclave_u.h
+server/server_app/server_enclave_u.c: server/server_app/server_enclave_u.h
 
 server/server_app/server_enclave_u.o: server/server_app/server_enclave_u.c
 	@$(CC) $(SGX_COMMON_CFLAGS) $(Server_C_Flags) -c $< -o $@
 	@echo "CC   <=  $<"
 
-server/utils/%.o: server/utils/%.cpp 
-	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Server_Cpp_Flags) -c $< -o $@
-	@echo "CXX  <=  $<"
-
-server/server_app/register_client.o: server/server_app/register_client.cpp server/server_app/server_enclave_u.h server/utils/utils.h
-	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Server_Cpp_Flags) -c $< -o $@
-	@echo "CXX  <=  $<"
-
-server/server_app/test.o: server/server_app/test.cpp server/server_app/server_enclave_u.h
+server/server_app/%.o: server/server_app/%.cpp server/server_app/server_enclave_u.h utils/utils.cpp utils/utils_sgx.cpp utils/message_handler.cpp
 	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Server_Cpp_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
  
-$(App_Name): server/server_app/server_enclave_u.o $(Server_Cpp_Objects) 
+$(Server_Name): server/server_app/server_enclave_u.o $(Server_Cpp_Objects) 
 	@$(CXX) $^ -o $@ $(Server_Link_Flags)
 	@echo "LINK =>  $@"
 
-######## Client, Networking and IAS Objects ########
+######## Client Objects ########
 
-client/client_app/%.o: client/client_app/%.cpp
+client/%.o: client/%.cpp ecp/ecp.cpp IAS/ias_simulation.cpp
 	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Client_Cpp_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
 
-client/ecp/%.o: client/ecp/%.cpp
-	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Client_Cpp_Flags) -c $< -o $@
-	@echo "CXX  <=  $<"
-
-IAS/%.o: IAS/%.cpp
-	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Client_Cpp_Flags) -c $< -o $@
-	@echo "CXX  <=  $<"
-
-networking/handlers/%.o: networking/handlers/%.cpp
-	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Server_Cpp_Flags) -c $< -o $@
-	@echo "CXX  <=  $<"
-
-Client: $(Client_Cpp_Objects)
+$(Client_Name): $(Client_Cpp_Objects)
 	@$(CXX) $^ -o $@ $(Client_Link_Flags)
-	@echo "LINK =>  $@"
-
-######## Other Objects ########
-
-server/server_app/server_publish.o: server/server_app/server_publish.cpp 
-	@echo $(CXX) $(SGX_COMMON_CXXFLAGS) $(Publish_Cpp_Flags) -c $< -o $@
-	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Publish_Cpp_Flags) -c $< -o $@
-	@echo "CXX  <=  $<"
-
-Publish: server/server_app/server_enclave_u.o $(Publish_Cpp_Objects) 
-	@$(CXX) $^ -o $@ $(Publish_Link_Flags)
-	@echo "LINK =>  $@"
-
-client/client_app/client_publish.o: client/client_app/client_publish.cpp 
-	@echo $(CXX) $(SGX_COMMON_CXXFLAGS) $(Send_Cpp_Flags) -c $< -o $@
-	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Send_Cpp_Flags) -c $< -o $@
-	@echo "CXX  <=  $<"
-
-Send: $(Send_Cpp_Objects) 
-	@$(CXX) $^ -o $@ $(Send_Link_Flags)
-	@echo "LINK =>  $@"
-
-query/main.o: query/main.cpp 
-	@echo $(CXX) $(SGX_COMMON_CXXFLAGS) $(Query_Cpp_Flags) -c $< -o $@
-	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Query_Cpp_Flags) -c $< -o $@
-	@echo "CXX  <=  $<"
-
-Query: server/server_app/server_enclave_u.o $(Query_Cpp_Objects) 
-	@$(CXX) $^ -o $@ $(Query_Link_Flags)
 	@echo "LINK =>  $@"
 
 ######## Enclave Objects ########
@@ -447,4 +372,13 @@ $(Signed_Enclave_Name): $(Enclave_Name)
 .PHONY: clean
 
 clean:
-	@rm -f .config_* $(App_Name) $(App_Name) $(Enclave_Name) $(Signed_Enclave_Name) $(Server_Cpp_Objects) Client server/server_app/server_enclave_u.* $(Enclave_Cpp_Objects) server/server_enclave/server_enclave_t.* Client.* $(Client_Cpp_Objects) publish/client_publish.o Publish publish/server_publish.o Send query/main.o Query client/client_app/client_publish.o server/server_app/server_publish.o
+	@rm -f .config_* \
+	$(Server_Name) \
+	$(Client_Name) \
+	$(Enclave_Name) \
+	$(Signed_Enclave_Name) \
+	$(Server_Cpp_Objects) \
+	$(Client_Cpp_Objects) \
+	$(Enclave_Cpp_Objects) \
+	server/server_app/server_enclave_u.* \
+	server/server_enclave/server_enclave_t.* 

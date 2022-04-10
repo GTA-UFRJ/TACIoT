@@ -1,12 +1,11 @@
 /*
- * Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
- * Autor: Guilherme Araujo Thomaz
- * Data da ultima modificacao: 15/11/2021
- * Descricao: funcoes e tipos auxiliares
+ * Teleinformatic and Automation Group (GTA, Coppe, UFRJ)
+ * Author: Guilherme Araujo Thomaz
+ * Descripton: auxiliary funtions and types
  * 
- * Este codigo foi modificado seguindo as permissoes da licenca
- * da Intel Corporation, apresentadas a seguir
- *
+ * This code was modified following access permissions defined
+ * by Intel Corporation license, presented as follows
+ * 
  */
 
 #include "utils.h"

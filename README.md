@@ -36,25 +36,21 @@ some networking latency in miliseconds for each sent or received message from se
 
 To test the register application, first, run:
 ```
-./Client
+./Client r
 ```
 The client will offer an attestation service for the server. In other configured
 machine/terminal, run:
 ```
-./Server
+./Server r
 ```
-To test the server data publishing service, run:
+To test the server data publishing and quering service, run:
 ```
-./Publish s
+./Server s
 ```
 You can use *s* for a secure server (using SGX enclaves) or *i* for an insecure server.
 Then, in other configured machine/environment, run:
 ```
-./Send
-```
-To test the SGX Query application, run:
-```
-./Query
+./Client p 
 ```
 For evaluating throughput and latency, you can enter wrk2 repo and run:
 ```

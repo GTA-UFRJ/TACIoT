@@ -1,12 +1,11 @@
 /*
- * Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
- * Autor: Guilherme Araujo Thomaz
- * Data da ultima modificacao: 22/11/2021
- * Descricao: atesta o servidor para se registrar. 
+ * Teleinformatic and Automation Group (GTA, Coppe, UFRJ)
+ * Author: Guilherme Araujo Thomaz
+ * Description: attest server
  * 
- * Este codigo foi modificado seguindo as permissoes da licenca
- * da Intel Corporation, apresentadas a seguir
- *
+ * This code was modified following access permissions defined
+ * by Intel Corporation license, presented as follows
+ * 
  */
 /*
  * Copyright (C) 2011-2020 Intel Corporation. All rights reserved.
@@ -55,7 +54,7 @@
 #define SAFE_FREE(ptr) {if (NULL != (ptr)) {free(ptr); (ptr) = NULL;}}
 #endif
 
-// O ID de grupo extendido suportado pelo cliente contem 4 bytes (32 bits) de zeros.
+// Extended group ID supported by client contain 4 bytes (32 bits) of zeros
 static const sample_extended_epid_group g_extended_epid_groups[] = {
     {
         0,
@@ -65,7 +64,7 @@ static const sample_extended_epid_group g_extended_epid_groups[] = {
     }
 };
 
-// Chave de curva eliptica privada do cliente.
+// Private client eliptic curve key
 static const sample_ec256_private_t g_sp_priv_key = {
     {
         0x90, 0xe7, 0x6c, 0xbb, 0x2d, 0x52, 0xa1, 0xce,
@@ -75,7 +74,7 @@ static const sample_ec256_private_t g_sp_priv_key = {
     }
 };
 
-// Chave pública do cliente. Enviada para o servidor.
+// Client public key. Sent to server
 static const sample_ec_pub_t g_sp_pub_key = {
     {
         0x72, 0x12, 0x8a, 0x7a, 0x17, 0x52, 0x6e, 0xbf,
@@ -147,13 +146,13 @@ static bool g_is_sp_registered = false;
 static int g_sp_credentials = 0;
 static int g_authentication_token = 0;
 
-// CHAVE PARA CADASTRO
+// Register key
 uint8_t g_secret[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
                         0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
 
 sample_spid_t g_spid;
 
-// Processa mensagem 0
+// Process message 0
 int sp_ra_proc_msg0_req(const sample_ra_msg0_t *p_msg0,
     uint32_t msg0_size,
     ra_samp_response_header_t **pp_msg0_resp)
@@ -170,7 +169,7 @@ int sp_ra_proc_msg0_req(const sample_ra_msg0_t *p_msg0,
     }
     uint32_t extended_epid_group_id = p_msg0->extended_epid_group_id;
 
-    // Verifica se este cliente ja esta registrado
+    // Verify if client is alredy registred
     if (!g_is_sp_registered ||
         (g_sp_extended_epid_group_id != NULL && g_sp_extended_epid_group_id->extended_epid_group_id != extended_epid_group_id))
     {
@@ -181,7 +180,7 @@ int sp_ra_proc_msg0_req(const sample_ra_msg0_t *p_msg0,
             {
                 g_sp_extended_epid_group_id = &(g_extended_epid_groups[i]);
 
-                // Se comunica com o IAS para registra-lo.
+                // Comunicate with IAS to register it
                 ret = g_sp_extended_epid_group_id->enroll(g_sp_credentials, &g_spid,
                     &g_authentication_token);
                 if (0 != ret)
@@ -196,10 +195,10 @@ int sp_ra_proc_msg0_req(const sample_ra_msg0_t *p_msg0,
         }
     }
 
-    // Retorna o ID da chave de atestacao EPID
+    // Return EPID attestation key ID
     msg0_resp_size = (uint32_t)sizeof(g_epid_unlinkable_att_key_id_list);
 
-    // Aloca memoira para resposta da mensagem 0
+    // Alocate memory for message 0 response
     p_msg0_resp_full = (ra_samp_response_header_t*)malloc(msg0_resp_size
         + sizeof(ra_samp_response_header_t));
     if(!p_msg0_resp_full)
@@ -211,7 +210,7 @@ int sp_ra_proc_msg0_req(const sample_ra_msg0_t *p_msg0,
     {
         memset(p_msg0_resp_full, 0, msg0_resp_size + sizeof(ra_samp_response_header_t));
 
-        // Obtem o ID da chave de atestacao EPID
+        // Get EPIC attestayion key ID
         memcpy_s(p_msg0_resp_full->body, msg0_resp_size,
             g_epid_unlinkable_att_key_id_list, msg0_resp_size);
         p_msg0_resp_full->type = TYPE_RA_MSG0;
@@ -234,7 +233,7 @@ CLEANUP:
     return ret;
 }
 
-// Processa mensagem 1 e retorna mensagem 2
+// Process msg 1 and return msg 2
 int sp_ra_proc_msg1_req(const sample_ra_msg1_t *p_msg1,
 						uint32_t msg1_size,
 						ra_samp_response_header_t **pp_msg2)
@@ -253,18 +252,18 @@ int sp_ra_proc_msg1_req(const sample_ra_msg1_t *p_msg1,
         return -1;
     }
 
-    // Verifica se ja esta registrado
+    // Verify if it is alredy registred
     if (!g_is_sp_registered)
     {
         return SP_UNSUPPORTED_EXTENDED_EPID_GROUP;
     }
 
     do{
-        // Obtem a assinatura do IAS usando ID de grupo.
+        // Get IAS signature using group ID
         uint8_t* sig_rl;
         uint32_t sig_rl_size = 0;
 
-        // Se comunica com o IAS
+        // Communicate with IAS
         ret = g_sp_extended_epid_group_id->get_sigrl(p_msg1->gid, &sig_rl_size, &sig_rl);
         if(0 != ret)
         {
@@ -273,7 +272,7 @@ int sp_ra_proc_msg1_req(const sample_ra_msg1_t *p_msg1,
             break;
         }
 
-        // Salva a chave Ga do servidor recebido na mensagem 1
+        // Save server Ga key received in message 1
         if (memcpy_s(&g_sp_db.g_a, sizeof(g_sp_db.g_a), &p_msg1->g_a,
                     sizeof(p_msg1->g_a)))
         {
@@ -282,7 +281,7 @@ int sp_ra_proc_msg1_req(const sample_ra_msg1_t *p_msg1,
             break;
         }
 
-        // Gera o par de chaves EC que sera o Gb
+        // Generate EC key pair that generate Gb
         sample_ret = sample_ecc256_open_context(&ecc_state);
         if(SAMPLE_SUCCESS != sample_ret)
         {
@@ -303,7 +302,7 @@ int sp_ra_proc_msg1_req(const sample_ra_msg1_t *p_msg1,
             break;
         }
 
-        // Salva o par de chaves
+        // Save key pair
         if(memcpy_s(&g_sp_db.b, sizeof(g_sp_db.b), &priv_key,sizeof(priv_key))
         || memcpy_s(&g_sp_db.g_b, sizeof(g_sp_db.g_b),
                     &pub_key,sizeof(pub_key)))
@@ -313,7 +312,7 @@ int sp_ra_proc_msg1_req(const sample_ra_msg1_t *p_msg1,
             break;
         }
 
-        // Gera o segredo comparilhado Gab entre cliente e servidor
+        // Generate Gab secret shared between client and server 
         sample_ec_dh_shared_t dh_key = {{0}};
         sample_ret = sample_ecc256_compute_shared_dhkey(&priv_key,
             (sample_ec256_public_t *)&p_msg1->g_a,
@@ -327,7 +326,7 @@ int sp_ra_proc_msg1_req(const sample_ra_msg1_t *p_msg1,
             break;
         }
 
-        // A chave SMK eh derivada a partir de Gab e eh usada para a mensagem 2
+        // SMK key is derivated from Gab and used in message 2
         derive_ret = derive_key(&dh_key, SAMPLE_DERIVE_KEY_SMK,
                                 &g_sp_db.smk_key);
         if(derive_ret != true)
@@ -337,7 +336,7 @@ int sp_ra_proc_msg1_req(const sample_ra_msg1_t *p_msg1,
             break;
         }
 
-        // As chaves MK e SK serao usadas para comunicacoes futuras 
+        // MK and SK key are used for future communications
         derive_ret = derive_key(&dh_key, SAMPLE_DERIVE_KEY_MK,
                                 &g_sp_db.mk_key);
         if(derive_ret != true)
@@ -363,7 +362,7 @@ int sp_ra_proc_msg1_req(const sample_ra_msg1_t *p_msg1,
             break;
         }
 
-        // Aloca memoria para mensagem 2
+        // Alocate memory for message 2
         uint32_t msg2_size = (uint32_t)sizeof(sample_ra_msg2_t) + sig_rl_size;
         p_msg2_full = (ra_samp_response_header_t*)malloc(msg2_size
                     + sizeof(ra_samp_response_header_t));
@@ -380,7 +379,7 @@ int sp_ra_proc_msg1_req(const sample_ra_msg1_t *p_msg1,
         p_msg2_full->status[1] = 0;
         p_msg2 = (sample_ra_msg2_t *)p_msg2_full->body;
 
-        // Constroi mensgem 2
+        // Construct message 2
         if(memcpy_s(&p_msg2->g_b, sizeof(p_msg2->g_b), &g_sp_db.g_b,
                     sizeof(g_sp_db.g_b)) ||
         memcpy_s(&p_msg2->spid, sizeof(sample_spid_t),
@@ -391,11 +390,11 @@ int sp_ra_proc_msg1_req(const sample_ra_msg1_t *p_msg1,
             break;
         }
 
-        // O tipo da assinatura eh ligavel
+        // The signature type is linkable
         p_msg2->quote_type = SAMPLE_QUOTE_LINKABLE_SIGNATURE;
         p_msg2->kdf_id = SAMPLE_AES_CMAC_KDF_ID;
         
-        // Cria Gb_Ga
+        // Create Gb_Ga
         sample_ec_pub_t gb_ga[2];
         if(memcpy_s(&gb_ga[0], sizeof(gb_ga[0]), &g_sp_db.g_b,
                     sizeof(g_sp_db.g_b))
@@ -407,7 +406,7 @@ int sp_ra_proc_msg1_req(const sample_ra_msg1_t *p_msg1,
             break;
         }
 
-        // Assina Gb_Ga
+        // Sign Gb_Ga
         sample_ret = sample_ecdsa_sign((uint8_t *)&gb_ga, sizeof(gb_ga),
                         (sample_ec256_private_t *)&g_sp_priv_key,
                         (sample_ec256_signature_t *)&p_msg2->sign_gb_ga,
@@ -419,7 +418,7 @@ int sp_ra_proc_msg1_req(const sample_ra_msg1_t *p_msg1,
             break;
         }
 
-        // Assina com a SMK a string gb||SPID||TYPE||KDF_ID||Sigsp(gb,ga)
+        // Sign the string gb||SPID||TYPE||KDF_ID||Sigsp(gb,ga) with SMK
         uint8_t mac[SAMPLE_EC_MAC_SIZE] = {0};
         uint32_t cmac_size = offsetof(sample_ra_msg2_t, mac);
         sample_ret = sample_rijndael128_cmac_msg(&g_sp_db.smk_key,
@@ -465,7 +464,7 @@ int sp_ra_proc_msg1_req(const sample_ra_msg1_t *p_msg1,
     return ret;
 }
 
-// Processa a mensagem 3
+// Process message 3
 int sp_ra_proc_msg3_req(const sample_ra_msg3_t *p_msg3,
                         uint32_t msg3_size,
                         ra_samp_response_header_t **pp_att_result_msg)
@@ -487,14 +486,14 @@ int sp_ra_proc_msg3_req(const sample_ra_msg3_t *p_msg3,
         return SP_INTERNAL_ERROR;
     }
 
-    // Verifica se estamos registrados
+    // Verify if we are registred
     if (!g_is_sp_registered)
     {
         return SP_UNSUPPORTED_EXTENDED_EPID_GROUP;
     }
 
     do{
-        // Compara o Ga recebido agora com o recebido antes
+        // Compare the received Ga with the one received before
         ret = memcmp(&g_sp_db.g_a, &p_msg3->g_a, sizeof(sample_ec_pub_t));
         if(ret)
         {
@@ -503,12 +502,12 @@ int sp_ra_proc_msg3_req(const sample_ra_msg3_t *p_msg3,
             break;
         }
         
-        // Verifica se o tamanho da mensagem 3 eh valido
+        // Verify if message 3 size is valid
         uint32_t mac_size = msg3_size - (uint32_t)sizeof(sample_mac_t);
         p_msg3_cmaced = reinterpret_cast<const uint8_t*>(p_msg3);
         p_msg3_cmaced += sizeof(sample_mac_t);
 
-        // Verifica a assinatura
+        // Verify signature
         sample_cmac_128bit_tag_t mac = {0};
         sample_ret = sample_rijndael128_cmac_msg(&g_sp_db.smk_key,
                                         p_msg3_cmaced,
@@ -538,7 +537,7 @@ int sp_ra_proc_msg3_req(const sample_ra_msg3_t *p_msg3,
 
         p_quote = (const sample_quote_t*)p_msg3->quote;
 
-        // Verifica o report contido dentro do quote na mensagem 3 do servidor
+        // Verify report contained inside the quote in server message 3
         // report (64 bytes) = SHA256{ga|gb|vk} (32 bytes) | 0 (32 bytes)
         sample_ret = sample_sha256_init(&sha_handle);
         if(sample_ret != SAMPLE_SUCCESS)
@@ -592,11 +591,11 @@ int sp_ra_proc_msg3_req(const sample_ra_msg3_t *p_msg3,
             break;
         }
 
-        // Aloca memoria para mensagem de resposta do IAS
+        // Alocate memory for IAS message response
         ias_att_report_t attestation_report;
         memset(&attestation_report, 0, sizeof(attestation_report));
 
-        // Se comunica com o IAS
+        // Communicate with IAS
         ret = g_sp_extended_epid_group_id->verify_attestation_evidence(p_quote, NULL,
                                             &attestation_report);
         if(0 != ret)
@@ -612,7 +611,7 @@ int sp_ra_proc_msg3_req(const sample_ra_msg3_t *p_msg3,
                 attestation_report.revocation_reason);
         fprintf(OUTPUT, "\n\tpse_status: %d.",  attestation_report.pse_status);
 
-        // Aloca memoria para a mesnagem de resultado par ao servidor
+        // Alocate memory for message result for server
         uint32_t att_result_msg_size = sizeof(sample_ra_att_result_msg_t);
         p_att_result_msg_full =
             (ra_samp_response_header_t*)malloc(att_result_msg_size
@@ -674,7 +673,7 @@ int sp_ra_proc_msg3_req(const sample_ra_msg3_t *p_msg3,
 
         bool isv_policy_passed = true;
 
-        // Monta a mensagem de resposta da atestacao
+        // Mount attestation message response
         p_att_result_msg->platform_info_blob = attestation_report.info_blob;
 
         // Gera uma assinatura baseada na chave MK
@@ -690,7 +689,7 @@ int sp_ra_proc_msg3_req(const sample_ra_msg3_t *p_msg3,
             break;
         }
 
-        // Gera um segredo compartilhado e criptografa ele com a SK, se a atestacao passou
+        // Generate a shared secret and encript it with SK if attestation has passed
         uint8_t aes_gcm_iv[SAMPLE_SP_IV_SIZE] = {0};
         p_att_result_msg->secret.payload_size = sizeof(g_secret);
         if((IAS_QUOTE_OK == attestation_report.status) &&
@@ -706,6 +705,9 @@ int sp_ra_proc_msg3_req(const sample_ra_msg3_t *p_msg3,
                         NULL,
                         0,
                         &p_att_result_msg->secret.payload_tag);
+            /*
+            for (uint32_t indice=0; indice<p_att_result_msg->secret.payload_size; indice++)
+                printf("0x%02x, ", p_att_result_msg->secret.payload[indice]);*/
         }
     }while(0);
     if(ret)

@@ -1,13 +1,12 @@
 /*
- * Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
- * Autor: Guilherme Araujo Thomaz
- * Data da ultima modificacao: 22/11/2021
- * Descricao: interface de alto nivel para funcionalidades de envio
- * e recepcao de mensagens entre cliente e servidor.
+ * Teleinformatic and Automation Group (GTA, Coppe, UFRJ)
+ * Author: Guilherme Araujo Thomaz
+ * Descripton: high level interface for server communicationg
+ * with client for attestation
  * 
- * Este codigo foi modificado seguindo as permissoes da licenca
- * da Intel Corporation, apresentadas a seguir
- *
+ * This code was modified following access permissions defined
+ * by Intel Corporation license, presented as follows
+ * 
  */
 /*
  *
@@ -96,8 +95,9 @@ typedef ra_samp_request_header_t server_to_client_t;
 
 #ifdef  __cplusplus
 extern "C" {
-#endif
+#endif 
 
+int generate_attestation_message(const ra_samp_request_header_t* , char* );
 int ra_network_send_receive(const char *client_url,
                             const ra_samp_request_header_t *req,
                             ra_samp_response_header_t **p_resp);

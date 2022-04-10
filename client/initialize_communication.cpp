@@ -1,8 +1,7 @@
 /*
- * Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
- * Autor: Guilherme Araujo Thomaz
- * Data da ultima modificacao: 17/12/2021
- * Descricao: espera mensgaens do servdior para se atestar. 
+ * Teleinformatic and Automation Group (GTA, Coppe, UFRJ)
+ * Author: Guilherme Araujo Thomaz
+ * Description: wait for server messages to attest
  */
 
 #include <stdint.h>
@@ -15,9 +14,10 @@
 #include <thread>
 #include "request_register.h"
 #include "config_macros.h"
+#include "initialize_communication.h"
 #include HTTPLIB_PATH
 
-int main(void)
+int initialize_communication()
 {
     ra_samp_request_header_t* p_req;
     char c_type[3];
@@ -30,30 +30,8 @@ int main(void)
     uint8_t* body;
     int ret = 0;
     using namespace httplib;
-/*
-     // Cliente HTTP se conecta com o servidor
-    char server_url[URL_MAX_SIZE];
-    sprintf(server_url,SERVER_URL);
-    const std::string srv_url(server_url);
-    Client cli(srv_url, COMUNICATION_PORT_2);
-    Error err = Error::Success;
 
-    // Cliente envia mensagem para se registar, com seu endereço, porta e chave de atestacao   
-    char get_msg[URL_MAX_SIZE];
-    sprintf(get_msg,"/register/url=%s&port=%u&pk=%s",TEST_CLIENT_URL,COMUNICATION_PORT,CLIENT_GXGYPK);
-    printf("\nCliente enviou: %s\n",get_msg);
-    if (auto res = cli.Get(get_msg)) {
-      if (res->status == 200) {
-        fprintf(stdout,"\nCliente recebeu\n");
-        std::cout << res->body << std::endl;
-      }
-    } else {
-      err = res.error();
-      printf("%d\n", (int)res.error());
-    }   
-*/
-
-    // Cliente oferece um servico de atestacao a nuvem
+    // Client offers attestation service for cloud
     Server svr;
     svr.Get("/stop", [&](const Request& req, Response& res) {
         svr.stop();
@@ -63,9 +41,9 @@ int main(void)
         
         std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS)); 
 
-        fprintf(stdout,"\nCliente recebeu mensagem\n");
+        fprintf(stdout,"\nClient received mensage\n");
         
-        // Converte respostas em string e depois em numeros em hexadecimal
+        // Converte messages in strings and numbers
         std::string a_type = req.matches[1].str();
         strcpy(c_type, a_type.c_str());
         type = (uint8_t)strtoul(c_type, NULL, 16);
@@ -74,7 +52,6 @@ int main(void)
         strcpy(c_size, a_size.c_str());
         size = (uint32_t)strtoul(c_size, NULL, 16);
 
-        // O campo de align possui 3 caracteres. Ex: 7f 00 00
         std::string a_align = req.matches[3].str();
         strcpy(c_align, a_align.c_str());
         char auxiliar[3];
@@ -84,9 +61,7 @@ int main(void)
             auxiliar[0] = c_align[i];
             auxiliar[1] = c_align[i+1];
         }
-        //fprintf(stdout,"\ntype = %u, size = %u, align[0,1,2] = %u %u %u", type, size, align[0], align[1], align[2]);
-        // O tamanho do corpo eh especificado no campo size
-        // Cada byte eh representado como 2 caracteres hexadecimais
+        
         c_body = (char*)malloc((size*2+1)*sizeof(char));
         body = (uint8_t*)malloc(size*sizeof(uint8_t));
         std::string a_body = req.matches[4].str();
@@ -99,7 +74,7 @@ int main(void)
         }
         free(c_body);
         
-        // Preenche a estrutura de attestation request com os campos recebidos
+        // Fill attestation request strtucture with received fields
         p_req = (ra_samp_request_header_t*)malloc(sizeof(uint8_t)*(1+4+3+size));
         p_req->type = type;
         p_req->size = size;
@@ -107,7 +82,7 @@ int main(void)
         memcpy(&p_req->body[0],body,size*sizeof(uint8_t));
         free(body);
 
-        // Processa mensagem e gera resposta
+        // Process messages and generate response 
         ra_samp_response_header_t* p_resp_msg;
         char *response;
         char *res_body;
@@ -153,7 +128,7 @@ int main(void)
         break;
         }
 
-        // Se nao houve erro, envia uma mensagem de resposta
+        // Send response message
         if(0 == ret)
         {
             res_body = (char*)malloc((1+p_resp_msg->size)*2*sizeof(char));         
@@ -182,15 +157,15 @@ int main(void)
                      p_resp_msg->align[0],
                      res_body);
             free(res_body);
-            fprintf(stdout,"\nCliente enviou: %s\n",response);
+            fprintf(stdout,"\nClient sent %s\n",response);
             res.set_content(response,"text/plain");
             free(response);
         }
     });
 
-    // O cliente serve a nuvem na porta 7777 para atestacao
-    fprintf(stdout,"\nCliente iniciou o servico de atestacao\n");
-    fprintf(stdout,"Latencia: %d\n", LATENCY_MS);
+    // Client serves cloud in 7777 port for attestation
+    fprintf(stdout,"\nClient started attestation service\n");
+    //fprintf(stdout,"Latency: %d\n", LATENCY_MS);
     svr.listen(TEST_CLIENT_URL,COMUNICATION_PORT);
     return ret;
 }

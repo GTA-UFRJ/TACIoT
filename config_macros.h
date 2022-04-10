@@ -49,20 +49,36 @@
 #define SEALS_PATH "/home/guiaraujo/TACIoT/server/seals"
 #endif
 
-#ifndef CLIENT_GXGYPK
-#define CLIENT_GXGYPK "72128a7a17526ebf85d03a623730aead3e3daaee9c60731db05be8621c4beb38d48140d950e2577b26eeb741e7c614e224b7bdc903f29a28a83cc81011145e06"
-#endif
-
 #ifndef LATENCY_MS
 #define LATENCY_MS 100
 #endif
 
+#ifndef CLIENT_GXGYPK
+#define CLIENT_GXGYPK "72128a7a17526ebf85d03a623730aead3e3daaee9c60731db05be8621c4beb38d48140d950e2577b26eeb741e7c614e224b7bdc903f29a28a83cc81011145e06"
+#endif
+
+#ifndef CLIENT_ID
+#define CLIENT_ID "72d41281"
+#endif
+
+#ifndef DATA_TYPE_SAMPLE
+#define DATA_TYPE_SAMPLE "generic_test"
+#endif
+
+#ifndef DATA_TYPE_SIZE
+#define DATA_TYPE_SIZE 12
+#endif
+
 #ifndef ULTRALIGHT_SAMPLE
-#define ULTRALIGHT_SAMPLE "pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281"
+#define ULTRALIGHT_SAMPLE "pk|72d41281|type|generic_test|payload|250110090|permission1|72d41281"
 #endif
 
 #ifndef ULTRALIGHT_SIZE
-#define ULTRALIGHT_SIZE 70
+#define ULTRALIGHT_SIZE 68
+#endif
+
+#ifndef SHARED_SECRET
+#define SHARED_SECRET "00000000000000000000000000000000"
 #endif
 
 #ifndef SEALED_SIZE
@@ -73,14 +89,18 @@
 #define RESULT_MAX_SIZE 1024
 #endif
 
-#ifndef DATA_PATH
-#define DATA_PATH "/home/guiaraujo/TACIoT/data"
-#endif
-
 #ifndef DB_PATH
 #define DB_PATH "/home/guiaraujo/TACIoT/database/sample"
 #endif
 
 #ifndef DB_PATH_SIZE
 #define DB_PATH_SIZE 39
+#endif
+
+#ifndef TOKEN_NAME
+#define TOKEN_NAME "72d41281"
+#endif
+
+#ifndef MAX_ENC_DATA_SIZE
+#define MAX_ENC_DATA_SIZE 1024
 #endif

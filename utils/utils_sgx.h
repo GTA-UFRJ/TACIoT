@@ -1,11 +1,11 @@
 /*
- * Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
- * Autor: Guilherme Araujo Thomaz
- * Data da ultima modificacao: 17/11/2021
- * Descricao: funcoes auxiliares para enclaves 
+ * Teleinformatic and Automation Group (GTA, Coppe, UFRJ)
+ * Author: Guilherme Araujo Thomaz
+ * Descripton: auxiliary funtions for enclave initialization
  * 
- * Este codigo foi modificado partindo do repositorio de exemplos da SGX101
- *
+ * This code was modified following access permissions defined
+ * by Intel Corporation license, presented as follows
+ * 
  */
 
 #ifndef SGX_UTILS_H_
@@ -14,6 +14,7 @@
 #include <string>
 #include <stdint.h>
 #include "sgx_urts.h"
+
 
 void print_error_message(sgx_status_t ret);
 

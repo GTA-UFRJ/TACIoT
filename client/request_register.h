@@ -1,12 +1,11 @@
 /*
- * Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
- * Autor: Guilherme Araujo Thomaz
- * Data da ultima modificacao: 16/11/2021
- * Descricao: atesta o servidor para se registrar.
+ * Teleinformatic and Automation Group (GTA, Coppe, UFRJ)
+ * Author: Guilherme Araujo Thomaz
+ * Description: attest server
  * 
- * Este codigo foi modificado seguindo as permissoes da licenca
- * da Intel Corporation, apresentadas a seguir
- *
+ * This code was modified following access permissions defined
+ * by Intel Corporation license, presented as follows
+ * 
  */
 /*
      * Copyright (C) 2011-2020 Intel Corporation. All rights reserved.

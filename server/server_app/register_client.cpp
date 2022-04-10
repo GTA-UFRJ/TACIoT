@@ -1,14 +1,12 @@
 /*
- * Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
- * Autor: Guilherme Araujo Thomaz
- * Data da ultima modificacao: 15/11/2021
- * Descrição: troca mensagens com o cliente para atestacao
- *
- * Este codigo foi modificado seguindo as permissoes da licenca
- * da Intel Corporation, apresentadas a seguir
- *
+ * Teleinformatic and Automation Group (GTA, Coppe, UFRJ)
+ * Author: Guilherme Araujo Thomaz
+ * Descripton: exchange messages with client for attestation
+ * 
+ * This code was modified following access permissions defined
+ * by Intel Corporation license, presented as follows
+ * 
  */
-
 /*
  * Copyright (C) 2011-2020 Intel Corporation. All rights reserved.
  *
@@ -49,7 +47,6 @@
 #include "message_handler.h"
 #include "utils.h"
 #include "utils_sgx.h"
-#include "register_client.h"
 #include "config_macros.h"
 #include "server_enclave_u.h"
 #include "remote_attestation_result.h"
@@ -60,19 +57,6 @@
 #include "sgx_uae_epid.h"
 #include "sgx_uae_quote_ex.h"
 #include "sgx_tcrypto.h"
-
-// Interface para enclave imprimir segredo usando OCALL (INSEGURA! Apenas para testes)
-void ocall_print_secret(uint8_t* secret, uint32_t secret_size)
-{
-    uint32_t i;
-    char hex_number[5];
-    for (i=0;i<secret_size;i++)
-    {
-        sprintf(hex_number, "%x", secret[i]);
-        printf("%s ", hex_number);
-    }
-    printf("\n");
-}
 
 void PRINT_ATTESTATION_SERVICE_RESPONSE(
     FILE *file,
@@ -169,7 +153,7 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
     FILE* seal_file;
     size_t write_num;
 
-    // Obtem ID de grupo EPID
+    // Get EPID group ID
     uint32_t extended_epid_group_id = 0;
     ret = sgx_get_extended_epid_group_id(&extended_epid_group_id);
     if (SGX_SUCCESS != ret)
@@ -180,7 +164,7 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
     }
     fprintf(OUTPUT, "\nCall sgx_get_extended_epid_group_id success.");
 
-    // Gera mensagem 0 (quatro bytes de zero)
+    // Generate msg 0 (bytes = 00 00 00 00)
     p_msg0_full = (ra_samp_request_header_t*) malloc(sizeof(ra_samp_request_header_t)
           +sizeof(uint32_t));
     if (NULL == p_msg0_full)
@@ -195,7 +179,6 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
     *extended_epid_group_id_memory_address = extended_epid_group_id;
     fprintf(OUTPUT, "\nMSG0 body generated -\n");
     PRINT_BYTE_ARRAY(OUTPUT, p_msg0_full->body, p_msg0_full->size);
-    // Manda mensagem 0 para o client (o formato foi combinado previamente)
     fprintf(OUTPUT, "\nSending msg0 to client.\n");
     ret = ra_network_send_receive(client_url,
                 p_msg0_full,
@@ -220,10 +203,10 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
     fprintf(OUTPUT, "\nCall sgx_select_att_key_id success.");
         
     char token_sufix[16+1];
-    sprintf(token_sufix, "%x%x%x%x",(client_pk->gx)[0],(client_pk->gy)[0],(client_pk->gx)[1],(client_pk->gy)[1]);
+    sprintf(token_sufix, "72d41281");
     do
     {
-        // Arquivo do token do enclave correspondente ao cliente
+        // Token file
         char token_path[PATH_MAX_SIZE];
         char enclave_path[PATH_MAX_SIZE];
         char seal_path[PATH_MAX_SIZE];
@@ -231,7 +214,7 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
         ret = sprintf(enclave_path,"%s",ENCLAVE_PATH);
         ret = sprintf(seal_path, "%s/%s", SEALS_PATH, token_sufix);
 
-        // Inicializa o enclave (ECALL)
+        // Initialize enclave
         ret = initialize_enclave(&enclave_id, token_path, enclave_path);
         if(SGX_SUCCESS != ret)
         {
@@ -242,7 +225,7 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
         }
         fprintf(OUTPUT, "\nCall sgx_create_enclave success.");
 
-        // Inicia a atestacao obtendo os parametos para o DH (ECALL)
+        // Start attestation getting DH parameters
         ret = enclave_init_ra(enclave_id,
                               &status,
                               false,
@@ -259,7 +242,7 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
     }
     fprintf(OUTPUT, "\nCall enclave_init_ra success.");
  
-    // Prepara mensagem 1 contendo Ga para o DH
+    // Prepare message 1 containing Ga for DH (Diffie-Hellman)
     p_msg1_full = (ra_samp_request_header_t*)
                    malloc(sizeof(ra_samp_request_header_t)
                         + sizeof(sgx_ra_msg1_t));
@@ -272,7 +255,7 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
     p_msg1_full->size = sizeof(sgx_ra_msg1_t);
    do
     {
-        // Obtem Ga do enclave
+        // Get GA from enclave
         ret = sgx_ra_get_msg1_ex(&selected_key_id, context, enclave_id, sgx_ra_get_ga,
                              (sgx_ra_msg1_t*)((uint8_t*)p_msg1_full
                              + sizeof(ra_samp_request_header_t)));
@@ -292,7 +275,7 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
        PRINT_BYTE_ARRAY(OUTPUT, p_msg1_full->body, p_msg1_full->size);
     } 
     
-   // Envia mensagem 1 recebe mensagem 2
+   // Send message 1 and receive message 2
     fprintf(OUTPUT, "\nSending msg1 to remote attestation service provider."
                     "Expecting msg2 back.\n");
     ret = ra_network_send_receive(client_url,
@@ -308,7 +291,7 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
     }
     else
     {
-        // Checa mensagem 2 contendo Gb, assinatura de GaGb e assinatura
+        // Check message 2 containing Gb, signature of GaGb and signature
         if(TYPE_RA_MSG2 != p_msg2_full->type)
         {
             error = MSG2_RECV_FAIL;
@@ -328,7 +311,7 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
     p_msg2_body = (sgx_ra_msg2_t*)((uint8_t*)p_msg2_full
                                  + sizeof(ra_samp_response_header_t));
 
-    // Gera mensagem 3 contendo o quote (ECALL)
+    // Generate message 3 containing the quote
     msg3_size = 0;
     busy_retry_time = 2;
     do
@@ -381,7 +364,7 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
         goto CLEANUP;
     }
 
-    // Eniva a mensagem 3 e recebe mensagem 4 com o resultado da atestação
+    // Send message 3 and receive message 4 as the attestaion result
     ret = ra_network_send_receive(client_url,
                                   p_msg3_full,
                                   &p_att_result_msg_full);
@@ -409,11 +392,11 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
                         "result message back\n.");
     }
     fprintf(OUTPUT, "\nATTESTATION RESULT RECEIVED - ");
-    PRINT_BYTE_ARRAY(OUTPUT, p_att_result_msg_full->body,
+    PRINT_BYTE_ARRAY(OUTPUT, p_att_result_msg_full->body, 
                              p_att_result_msg_full->size);
 
 
-    // Checa o MAC do reusltado com a chave MK (ECALL)
+    // Check result MAC using MK key
     ret = verify_att_result_mac(enclave_id,
             &status,
             context,
@@ -432,7 +415,7 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
     }
     attestation_passed = true;
 
-    // Checa o resultado da atestacao
+    // Check attestaion result
     if(0 != p_att_result_msg_full->status[0]
        || 0 != p_att_result_msg_full->status[1])
     {
@@ -442,14 +425,15 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
         attestation_passed = false;
     }
 
-    // AQUI COMECA A COMUNICACAO DE DADOS
-    // Pega o segredo enviado pelo cliente usando SK
+    // Get the secret sent by the client using SK
     sealed_size = sizeof(sgx_sealed_data_t) + sizeof(uint8_t)*16;
     sealed_data = (uint8_t*)malloc(sealed_size);
     char seal_path[PATH_MAX_SIZE];
     ret = sprintf(seal_path, "%s/%s", SEALS_PATH, token_sufix);
     if(attestation_passed)
     {
+        for (uint32_t indice=0; indice<p_att_result_msg_body->secret.payload_size; indice++)
+            printf("0x%02x, ", p_att_result_msg_body->secret.payload[indice]);
         ret = put_secret_data(enclave_id,
                               &status,
                               context,

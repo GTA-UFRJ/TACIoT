@@ -1,13 +1,12 @@
 /*
- * Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
- * Autor: Guilherme Araujo Thomaz
- * Data da ultima modificacao: 17/12/2021
- * Descricao: interface de alto nivel para funcionalidades de envio
- * e recepcao de mensagens entre cliente e servidor.
+ * Teleinformatic and Automation Group (GTA, Coppe, UFRJ)
+ * Author: Guilherme Araujo Thomaz
+ * Descripton: high level interface for server communicationg
+ * with client for attestation
  * 
- * Este codigo foi modificado seguindo as permissoes da licenca
- * da Intel Corporation, apresentadas a seguir
- *
+ * This code was modified following access permissions defined
+ * by Intel Corporation license, presented as follows
+ * 
  */
 /*
  * Copyright (C) 2011-2020 Intel Corporation. All rights reserved.
@@ -62,6 +61,30 @@
 
 // @return int
 
+int generate_attestation_message(const ra_samp_request_header_t* p_req, char* http_code)
+{
+    char* body;
+    uint32_t byte_length;
+    byte_length = p_req->size / sizeof(uint8_t); 
+    body = (char*)malloc((1+(byte_length*2))*sizeof(char));
+    char auxiliary_string[3];
+    for (uint32_t i=0; i<byte_length; i++){
+        sprintf(auxiliary_string,"%02x",p_req->body[i]);
+        body[2*i] = auxiliary_string[0];
+        body[2*i+1] = auxiliary_string[1];
+    }
+    body[2*byte_length] = '\0';
+    sprintf(http_code, "/attest/type=%02x&size=%02x&align=%02x%02x%02x&body=%s", 
+                                                                p_req->type,
+                                                                p_req->size, 
+                                                                p_req->align[0],
+                                                                p_req->align[1],
+                                                                p_req->align[2],
+                                                                body);
+    free(body);
+    return 0;
+}
+
 int ra_network_send_receive(const char *client_url,
     const ra_samp_request_header_t *p_req,
     ra_samp_response_header_t **p_resp)
@@ -78,40 +101,21 @@ int ra_network_send_receive(const char *client_url,
         return -1;
     }
 
-    // Inicializa um cliente HTTP para se atestar para o cliente
+    // Initialize an HTTP client for attestting with client
     char url[URL_MAX_SIZE];
     sprintf(url,"%s",client_url);
     char* ip = strtok((char*)url,":");
     char* port = strtok(NULL,":");
-    fprintf(stdout,"%s e %s\n",ip,port);
     int cli_port = (int)strtol(port,NULL,10);
     const std::string cli_ip(ip);
     httplib::Client cli(cli_ip,cli_port);
     //httplib::Error cli_err;
 
-    // Gera mensagem de atestacao para enviar para o cleinte
-    char* body;
-    uint32_t byte_length;
-    byte_length = p_req->size / sizeof(uint8_t); 
-    body = (char*)malloc((1+(byte_length*2))*sizeof(char));
-    char auxiliary_string[3];
-    for (uint32_t i=0; i<byte_length; i++){
-        sprintf(auxiliary_string,"%02x",p_req->body[i]);
-        body[2*i] = auxiliary_string[0];
-        body[2*i+1] = auxiliary_string[1];
-    }
-    body[2*byte_length] = '\0';
+    // Generate an attestion message for sending to client
     char* http_code = (char*)malloc(URL_MAX_SIZE*sizeof(char));
-    sprintf(http_code, "/attest/type=%02x&size=%02x&align=%02x%02x%02x&body=%s", 
-                                                                p_req->type,
-                                                                p_req->size, 
-                                                                p_req->align[0],
-                                                                p_req->align[1],
-                                                                p_req->align[2],
-                                                                body);
-    free(body);
+    ret = generate_attestation_message(p_req, http_code);
 
-    // Tenta se comunicar com o cliente x vezes
+    // Try to comunicate with client 10 times
     int tries = 0;
     int i;
     char* type;
@@ -130,7 +134,7 @@ int ra_network_send_receive(const char *client_url,
     bool sent = false;
     while (sent == false)
     {
-        // Evnia mensagem e obtem resposta do cliente
+        // Send message and pick client response
         if (auto res = cli.Get(http_code)){
             fprintf(stdout,"\nServidor enviou: %s\n",http_code);
             sent = true;
@@ -139,8 +143,8 @@ int ra_network_send_receive(const char *client_url,
                 fprintf(stdout,"\nServidor recebeu: \n");
                 std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
 
-                // Obtem os campos da resposta na forma de string
                 //std::cout << res->body << std::endl;
+                // Separate response fields in the form of string
                 fprintf(stdout,"\n%s\n",res->body.c_str());
                 sprintf(response_msg,"%s",res->body.c_str());
                 type = strtok((char*)response_msg,":");
@@ -155,7 +159,7 @@ int ra_network_send_receive(const char *client_url,
                 align = strtok(NULL,":");
                 res_body = strtok(NULL,":");
 
-                // Transforma os caracteres em hexadecimal
+                // Transform characters into hexadecimal
                 u_type = (unsigned)strtoul(type,NULL,16);
                 resp_msg.type = uint8_t(u_type);
                 u_status0 = (unsigned)strtoul(status0,NULL,16);
@@ -167,7 +171,7 @@ int ra_network_send_receive(const char *client_url,
                 u_align = (unsigned)strtoul(align,NULL,16);
                 resp_msg.align[0] = uint8_t(u_align);
 
-                // Preenche a estrutura da resposta
+                // Fill response structure
                 auxiliar[2] = '\0';
                 i = 0;
                 ra_free_network_response_buffer(p_resp_msg);
@@ -187,15 +191,15 @@ int ra_network_send_receive(const char *client_url,
 
             } 
         } else {
-            // Espera 400ms antes de tentar denovo
+            // Wait 2.5 sec before triying again
             fprintf(stdout, "HTTP Error: %d\n", (int)res.error());
             using namespace std::this_thread; // sleep_for, sleep_until
             using namespace std::chrono; // nanoseconds, system_clock, seconds
 
-            sleep_for(nanoseconds(10));
+            //sleep_for(nanoseconds(10));
             sleep_until(system_clock::now() + milliseconds(2500));
         }
-        if (tries < 20)
+        if (tries < 10)
         {
             tries++;
         } else {
@@ -204,7 +208,7 @@ int ra_network_send_receive(const char *client_url,
     }
     free(http_code);
 
-    // Retorna resposta do cliente para a funcao de atestacao que chamou essa
+    // Return client response to attestation function that made the call
     *p_resp = p_resp_msg;
     return ret;
 }

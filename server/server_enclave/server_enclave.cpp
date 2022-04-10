@@ -45,13 +45,13 @@
 #include "sgx_tcrypto.h"
 #include "sgx_tseal.h"
 #include "sgx_trts.h"
+//#include "server_processing.h"
 #include <string.h>
-//#include "utils.h"
 
 uint8_t g_secret[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
                         0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
 
-// Gera contexto para criar chave Ga de troca de mensagens com Diffie-Hellman
+// Generate context for creating Ga key for Diffie-Hellman Key Exchange
 sgx_status_t enclave_init_ra(
     int b_pse,
     sgx_ra_context_t *p_context,
@@ -63,7 +63,7 @@ sgx_status_t enclave_init_ra(
     return ret;
 }
 
-// Finaliza atestacao remota descartando da memoria contexto pra chave
+// End remote attestation discarding key context from memory
 sgx_status_t SGXAPI enclave_ra_close(
     sgx_ra_context_t context)
 {
@@ -72,7 +72,7 @@ sgx_status_t SGXAPI enclave_ra_close(
     return ret;
 }
 
-// Verifica o codigo de autenticacao de mensagem (integridade e autenticacao)
+// Verify Message Authentication Code (MAC) for ensuring integrity 
 sgx_status_t verify_att_result_mac(sgx_ra_context_t context,
                                    uint8_t* p_message,
                                    size_t message_size,
@@ -121,7 +121,7 @@ sgx_status_t verify_att_result_mac(sgx_ra_context_t context,
     return ret;
 }
 
-// Recupera o segredo criptografico enviado no reusltado da atestacao
+// Retrieve cryptographic secrec sent in attestition result
 sgx_status_t put_secret_data(
     sgx_ra_context_t context,
     uint8_t *p_secret,
@@ -153,18 +153,20 @@ sgx_status_t put_secret_data(
         ocall_print_secret(&g_secret[0], 16);
     } while(0);
 
-    // Aqui entra a selagem
     ret = sgx_seal_data(0, NULL, sizeof(g_secret[0])*16, &g_secret[0], (uint32_t)sealed_size, sealed_data);
 
-    // Testando deselagem
+    // Sealing testing
+    /*
     uint8_t plaintext[16] = {0};
     uint32_t plaintext_size = (uint32_t)(16*sizeof(uint8_t));
     ret = sgx_unseal_data(sealed_data, NULL, NULL, &plaintext[0], &plaintext_size);
     ocall_print_secret(&plaintext[0], plaintext_size);
+    */
 
     return ret;
 }
 
+// Process data before publishing
 sgx_status_t process_data(
     sgx_sealed_data_t* sealed_key,
     uint8_t* encrypted_data,
@@ -175,69 +177,48 @@ sgx_status_t process_data(
     uint32_t* processed_result_size,
     unsigned int process)
 {
-    // Chama enclave para desselar chave, decriptar com a chave, processar e rertornar resultado encriptado
-    // pk|72d41281|type|weg_multimeter|size|0x35|encrypted|AES128(pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281)
-
-    // Dessela chave
+    // AES128(pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281)
+    // Unseal key
     sgx_status_t ret = SGX_SUCCESS;
     uint8_t key[16] = {0}; 
     uint32_t key_size = (uint32_t)(16*sizeof(uint8_t));
     ret = sgx_unseal_data(sealed_key, NULL, NULL, &key[0], &key_size);
-
-    uint8_t encrypted_bytes[encrypted_data_size];
-    for (uint32_t j=0; j<encrypted_data_size; j++)
-    {
-        encrypted_bytes[j] = encrypted_data[j];
-    }
-    // ocall_print_secret(&encrypted_bytes[0], encrypted_data_size);
+    sgx_aes_gcm_128bit_key_t my_key;
+    memcpy(my_key, key, (size_t)key_size);
     //ocall_print_secret(&key[0], 16);
 
-    // Decripta dado com a chave
-    // HA UMA VULNERABILIDADE AQUI
-    // Solucao: fazer verificacao de tamanho maximo do buffer para evitar overflow na PRM
+    // Decrypt data using key
     uint8_t decMessage [dec_msg_len];
-    sgx_aes_gcm_128bit_key_t my_key;
-    for (uint32_t i=0; i<16; i++)
-    {
-        my_key[i] = key[i];
-    }
-    for (uint32_t i=0; i<dec_msg_len; i++)
-    {
-        decMessage[i] = 0;
-    }
+    memset(decMessage, 0, dec_msg_len);
     ret = sgx_rijndael128GCM_decrypt(&my_key,
-                                    &encrypted_bytes[0] + 16 + 12,
+                                    &encrypted_data[0] + 16 + 12,
                                     dec_msg_len,
                                     &decMessage[0],
-                                    &encrypted_bytes[0] + 16,
+                                    &encrypted_data[0] + 16,
                                     12,
                                     NULL,
                                     0,
                                     (const sgx_aes_gcm_128bit_tag_t*)
-                                    (&encrypted_bytes[0]));
-    //return ret;
+                                    (&encrypted_data[0]));
     //ocall_print_secret(&decMessage[0], dec_msg_len);
 
-    // Processa dado
+    // Process data
     uint8_t proc[dec_msg_len];
-    for(uint32_t k=0; k<dec_msg_len; k++)
-    {
-        proc[k]=0;
-    }
-    if (process != 0)
-    {
-        /*
-        AQUI ENTRA FUNCAO PARA PROCESSAR DADO RECEBIDO
-        */   
-    }
-    else {
-        memcpy(proc, decMessage, sizeof(uint8_t)*(dec_msg_len));
-    }
+    memcpy(proc, decMessage, sizeof(uint8_t)*dec_msg_len);
+    //apply_processing(process, decMessage, dec_msg_len, proc);
+    /*
+    switch ((proc_code_t)process){
+        case none:
+        memcpy(proc, decMessage, sizeof(uint8_t)*dec_msg_len);
+        break;
+
+        default:
+        break;
+    }*/
     //*processed_result_size = 12+16+dec_msg_len;
 
-    // Encripta dado com a chave
-    size_t result_len = (16 + 12 + sizeof(uint8_t)*(dec_msg_len));
-    *processed_result_size = (uint32_t)result_len;
+    // Encrypt data using key
+    *processed_result_size = (uint32_t)(16 + 12 + sizeof(uint8_t)*(dec_msg_len));
     uint8_t aes_gcm_iv[12] = {0};
     memcpy(processed_result+16, aes_gcm_iv, 12);
     ret = sgx_rijndael128GCM_encrypt(&my_key,
@@ -250,7 +231,6 @@ sgx_status_t process_data(
                                     0,
                                     (sgx_aes_gcm_128bit_tag_t*)
                                     (processed_result));
-
     //ocall_print_secret(&processed_result[0], *processed_result_size);
     processed_result[*processed_result_size] = 0;
     return ret;

@@ -1,13 +1,12 @@
 /*
- * Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
- * Autor: Guilherme Araujo Thomaz
- * Data da ultima modificacao: 15/11/2021
- * Descricao: funcoes auxiliares para enclaves 
+ * Teleinformatic and Automation Group (GTA, Coppe, UFRJ)
+ * Author: Guilherme Araujo Thomaz
+ * Descripton: auxiliary funtions for enclave initialization
  * 
- * Este codigo foi modificado partindo do repositorio de exemplos da SGX101
- *
+ * This code was modified following access permissions defined
+ * by Intel Corporation license, presented as follows
+ * 
  */
-
 #include <cstdio>
 #include <cstring>
 #include <stdio.h>
@@ -99,4 +98,3 @@ bool is_ecall_successful(sgx_status_t sgx_status, const std::string& err_msg,
     }
     return true;
 }
-
