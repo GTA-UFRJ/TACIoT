@@ -9,6 +9,7 @@
  */
 
 #include "utils.h"
+#include <stdlib.h>
 #include <string.h>
 #include <chrono>
 #include "sample_libcrypto.h"
@@ -55,4 +56,14 @@ void gen_iv(uint8_t* iv)
         //iv[i] = static_cast<uint8_t>(rand()%10) + 48;
         iv[i] = 0;
     }
+}
+
+void debug_print_encrypted(
+    size_t encMessageLen, 
+    uint8_t* encMessage){
+        printf("Size = %d\nData = ", (int)encMessageLen);
+        for (size_t byte=0; byte<encMessageLen; byte++){
+            printf("0x%02x, ", encMessage[byte]);
+        }
+        printf("\n");
 }

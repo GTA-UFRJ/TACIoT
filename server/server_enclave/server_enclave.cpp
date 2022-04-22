@@ -237,88 +237,88 @@ sgx_status_t process_data(
 }
 
 sgx_status_t retrieve_data(
-    sgx_sealed_data_t* sealed_key,
-    char* encrypted_data,
+    sgx_sealed_data_t* sealed_querier_key,
+    sgx_sealed_data_t* sealed_publisher_key,
+    uint8_t* original_data,
     uint32_t encrypted_data_size,
-    uint8_t* result)
+    char* querier_pk,
+    uint8_t* result,
+    uint8_t* accepted)
 {
-    // Decripta dado recebido do BD/cópia em disco
+    // Unseal keys
     sgx_status_t ret = SGX_SUCCESS;
+    uint8_t querier_key[16] = {0}; 
+    uint32_t key_size = (uint32_t)(16*sizeof(uint8_t));
+    ret = sgx_unseal_data(sealed_querier_key, NULL, NULL, &querier_key[0], &key_size);
     sgx_aes_gcm_128bit_key_t my_key;
-    for (uint32_t i=0; i<16; i++)
-    {
-        my_key[i] = 0;
-    }
-    uint8_t encrypted_bytes[encrypted_data_size];
-    for (uint32_t j=0; j<encrypted_data_size; j++)
-    {
-        encrypted_bytes[j] = (uint8_t)encrypted_data[j];
-    }
+    memcpy(my_key, querier_key, (size_t)key_size);
+
+    //ocall_print_secret(&querier_key[0], 16);
+
+    uint8_t publisher_key[16] = {0}; 
+    ret = sgx_unseal_data(sealed_publisher_key, NULL, NULL, &publisher_key[0], &key_size);
+    sgx_aes_gcm_128bit_key_t original_key;
+    memcpy(original_key, publisher_key, (size_t)key_size);
+
+    //ocall_print_secret(&publisher_key[0], 16);
+
+    // Decrypt data received from DB/disk copy
+    //ocall_print_secret(&original_data[0], encrypted_data_size);
     uint32_t dec_msg_len = encrypted_data_size-12-16;
     uint8_t decMessage [dec_msg_len];
-    for (uint32_t i=0; i<dec_msg_len; i++)
-    {
-        decMessage[i] = 0;
-    }
-    ret = sgx_rijndael128GCM_decrypt(&my_key,
-                                    &encrypted_bytes[0] + 16 + 12,
+    memset(decMessage,0,dec_msg_len);;
+    ret = sgx_rijndael128GCM_decrypt(&original_key,
+                                    &original_data[0] + 16 + 12,
                                     dec_msg_len,
                                     &decMessage[0],
-                                    &encrypted_bytes[0] + 16,
+                                    &original_data[0] + 16,
                                     12,
                                     NULL,
                                     0,
                                     (const sgx_aes_gcm_128bit_tag_t*)
-                                    (&encrypted_bytes[0]));
+                                    (&original_data[0]));
 
-    // Dessela chave do cliente requisitor
-    uint8_t key[16] = {0}; 
-    uint32_t key_size = (uint32_t)(16*sizeof(uint8_t));
-    ret = sgx_unseal_data(sealed_key, NULL, NULL, &key[0], &key_size);
-    sgx_aes_gcm_128bit_key_t client_key;
-    for (uint32_t i=0; i<16; i++)
+    //ocall_print_secret(&decMessage[0], dec_msg_len);
+
+    // Get permissions and verify if querier is included
+    int i = 0;
+    char auxiliar[3];
+    int permission_count = 0;
+    char code[3];
+    *accepted = 0;
+    char* text = (char*)malloc(1+dec_msg_len*sizeof(char));
+    memcpy(text, decMessage, dec_msg_len);
+    text[dec_msg_len] = '\0';
+    char* token = strtok_r(text, "|", &text);
+    while (token != NULL && *accepted == 0)
     {
-        client_key[i] = key[i];
+        i++;
+        token = strtok_r(NULL, "|", &text);
+        // Get type     
+        if (i == 7+2*permission_count)
+        {
+            if(!memcmp(token, querier_pk, 8))
+                *accepted = 1;
+            permission_count++;
+        }
     }
 
-    // Encripta dado com a chave do cliente requisitor 
-    uint8_t aes_gcm_iv[12] = {0};
-    memcpy(result+16, aes_gcm_iv, 12);
-    ret = sgx_rijndael128GCM_encrypt(&client_key,
-                                    &decMessage[0],
-                                    dec_msg_len,
-                                    result + 16 + 12,
-                                    &aes_gcm_iv[0],
-                                    12,
-                                    NULL,
-                                    0,
-                                    (sgx_aes_gcm_128bit_tag_t*)
-                                    (result));
+    // Encrypt data with querier key
+    if (*accepted){
+        uint8_t aes_gcm_iv[12] = {0};
+        memcpy(result+16, aes_gcm_iv, 12);
+        ret = sgx_rijndael128GCM_encrypt(&my_key,
+                                        &decMessage[0],
+                                        dec_msg_len,
+                                        result + 16 + 12,
+                                        &aes_gcm_iv[0],
+                                        12,
+                                        NULL,
+                                        0,
+                                        (sgx_aes_gcm_128bit_tag_t*)
+                                        (result));
+    }
+    
     //ocall_print_secret(&result[0], encrypted_data_size);
     return ret;
 }
-/*
-Função secure_aggregation
-    tipo = 123456
-    char* dados[quantidade_dados]
-    int tamanho_dados[qauntidade_dados]
-    ocall_read_db_entry(&dados[0], &quantidade_dados[0])
-         Aqui dentro a gente faz o seguinte:
-         + Abre arquivo BD
-         + Loop enquanto ainda nao tiver a quantidade de dados
-             + Lê a linha
-             + Separa a linha em partes
-             + Verifica o tipo
-             + Coloca o dado encriptado na lista 
-             + coloca tamanho do dado em outra lista
-             + Incrementa quantidade de dados
-             + Incrementa linha
-             + Se terminou arquivo, quantidade de dados acabou
-         + Fecha arquivo BD
-    Loop na lista com dados encriptados
-        Verifica tamanho na lista de tamanhos 
-        Decripta dado
-        Acumula soma
-    Monta mensagem a ser armazenada no BD
-    Copia mensagem para o proc
-*/

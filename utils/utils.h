@@ -30,6 +30,8 @@ errno_t memcpy_s(void *dest, size_t numberOfElements, const void *src,
 
 void PRINT_BYTE_ARRAY(FILE *file, void *mem, uint32_t len);
 
+void debug_print_encrypted(size_t , uint8_t* );
+
 typedef enum {
     OK,                         //0
     GET_EGID_FAIL,              //1

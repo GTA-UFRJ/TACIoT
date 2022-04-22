@@ -7,10 +7,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>  
-#include "client_publish.h"
-#include "config_macros.h"  
-#include "initialize_communication.h" 
 #include <cstdio>  
+#include "client_publish.h"
+#include "client_query.h"
+#include "config_macros.h" 
+#include "utils.h" 
+#include "initialize_communication.h" 
 
 int main (int argc, char *argv[])
 {
@@ -33,7 +35,13 @@ int main (int argc, char *argv[])
     }
     else if (*argv[1] == 'q')
     {
-        fprintf(stderr, "client_query not implemented");
+        uint32_t index = 0;
+        uint8_t queried_data[MAX_DATA_SIZE];
+        uint32_t queried_data_size;
+        error = client_query(index, &queried_data_size, queried_data);
+        queried_data[queried_data_size] = '\0';
+        fprintf(stdout, "Received %s\n", (char*)queried_data);
+        debug_print_encrypted(queried_data_size, queried_data);
     }
     else if (*argv[1] == 'r')
     {

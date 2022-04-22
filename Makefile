@@ -93,6 +93,7 @@ endif
 
 Server_Cpp_Files := server/server_app/server.cpp \
 					server/server_app/server_publish.cpp \
+					server/server_app/server_query.cpp \
 					server/server_app/register_client.cpp \
 					utils/utils.cpp \
 					utils/utils_sgx.cpp \
@@ -152,6 +153,7 @@ Client_Cpp_Files := client/cli.cpp \
 					client/request_register.cpp \
 					client/initialize_communication.cpp \
 					client/client_publish.cpp \
+					client/client_query.cpp \
 					client/encryption.cpp \
 					ecp/ecp.cpp \
 					IAS/ias_simulation.cpp \

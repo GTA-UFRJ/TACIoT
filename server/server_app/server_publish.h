@@ -9,9 +9,6 @@
 #include "config_macros.h" 
 #include HTTPLIB_PATH
 
-// Register shared key
-const sample_aes_gcm_128bit_key_t sha_key[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-
 // Structure of the message sent by acess point (used by teh server)
 typedef struct iot_message_t
 {
@@ -33,5 +30,5 @@ void file_write (iot_message_t , uint8_t* , uint32_t );
 // Get publish message sent by HTTP header
 uint32_t get_publish_message(const httplib::Request& , char* );
 
-// Get data, process it and read to database
+// Get data, process it and write to database
 int server_publish(bool, const httplib::Request&, httplib::Response&, sgx_enclave_id_t);

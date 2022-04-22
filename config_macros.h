@@ -62,19 +62,19 @@
 #endif
 
 #ifndef DATA_TYPE_SAMPLE
-#define DATA_TYPE_SAMPLE "generic_test"
+#define DATA_TYPE_SAMPLE "123456"
 #endif
 
 #ifndef DATA_TYPE_SIZE
-#define DATA_TYPE_SIZE 12
+#define DATA_TYPE_SIZE 6
 #endif
 
 #ifndef ULTRALIGHT_SAMPLE
-#define ULTRALIGHT_SAMPLE "pk|72d41281|type|generic_test|payload|250110090|permission1|72d41281"
+#define ULTRALIGHT_SAMPLE "pk|72d41281|type|123456|payload|250110091|permission1|72d41281"
 #endif
 
 #ifndef ULTRALIGHT_SIZE
-#define ULTRALIGHT_SIZE 68
+#define ULTRALIGHT_SIZE 62
 #endif
 
 #ifndef SHARED_SECRET
@@ -87,6 +87,10 @@
 
 #ifndef RESULT_MAX_SIZE
 #define RESULT_MAX_SIZE 1024
+#endif
+
+#ifndef MAX_DATA_SIZE
+#define MAX_DATA_SIZE 1024
 #endif
 
 #ifndef DB_PATH

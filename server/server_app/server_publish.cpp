@@ -56,20 +56,14 @@ iot_message_t parse_request(uint32_t size, char* msg)
         // Get client key
         if (i == 1)
         {
-            for (uint32_t j=0; j<8; j++)
-            {
-                rcv_msg.pk[j] = token[j];
-            }
+            memcpy(rcv_msg.pk, token, 8);
             rcv_msg.pk[8] = '\0';
         }
         // Get data type
         if (i == 3)
         {
-            for (uint32_t j=0; j<6; j++)
-            {
-                rcv_msg.type[j] = token[j];
-            }
-            rcv_msg.type[7] = '\0';
+            memcpy(rcv_msg.type, token, 6);
+            rcv_msg.type[6] = '\0';
         }
         // Get encrypted message size
         if (i == 5)
@@ -135,32 +129,41 @@ uint32_t secure_msg_processing (iot_message_t rcv_msg, sgx_enclave_id_t global_e
         &real_size,                                 //data real size
         (unsigned)proc_code                         //processing for being applied               
     );
-    return 98;
+    return real_size;
 }
 
 void file_write (iot_message_t rcv_msg, uint8_t* processed_data, uint32_t real_size)
 {
     // Write header in disk copy
     // type|123456|size|0x35|encrypted|AES128(pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281)
-    char publish_header[5+6+6+4+11+1];
-    sprintf(publish_header, "type|%s|size|0x%02x|encrypted|", rcv_msg.type, rcv_msg.encrypted_size);
+    char publish_header[5+6+4+8+6+4+11+1];
+    sprintf(publish_header, "type|%s|pk|%s|size|0x%02x|encrypted|", rcv_msg.type, rcv_msg.pk, rcv_msg.encrypted_size);
     char db_path[DB_PATH_SIZE];
     sprintf(db_path, "%s", DB_PATH);
     FILE* db_file = fopen(db_path, "ab");
     if (db_file != NULL) {
-        fwrite(publish_header, 1, (size_t)5+6+6+4+11+1, db_file);
+        fwrite(publish_header, 1, (size_t)5+6+4+8+6+4+11, db_file);
     }
     fclose(db_file);
+
+    char auxiliar[7];
+    char *enc_write = (char*)malloc(6*real_size);
+    for (int i=0; i<int(real_size); i++)
+    {
+        sprintf(auxiliar, "0x%02x--", processed_data[i]);
+        memcpy(&enc_write[6*i], auxiliar, 6);
+    }
 
     // Write result in disk copy
     sprintf(db_path, "%s", DB_PATH);
     db_file = fopen(db_path, "ab");
     if (db_file != NULL) {
-        fwrite(processed_data, 1, (size_t)real_size, db_file);
+        fwrite(enc_write, 1, (size_t)6*real_size, db_file);
         char nl = '\n';
         fwrite(&nl, 1, sizeof(char), db_file);
     }
     fclose(db_file);
+    free(enc_write);
 }
 
 uint32_t get_publish_message(const Request& req, char* snd_msg)
@@ -199,8 +202,7 @@ int server_publish(bool secure, const Request& req, Response& res, sgx_enclave_i
     if (secure == true)
     {
         uint8_t processed_data [RESULT_MAX_SIZE];
-        uint32_t real_size;
-        real_size = secure_msg_processing(rcv_msg, global_eid, processed_data);
+        uint32_t real_size = real_size = secure_msg_processing(rcv_msg, global_eid, processed_data);
         file_write (rcv_msg, processed_data, real_size);
     }
     

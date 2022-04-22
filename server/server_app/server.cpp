@@ -111,8 +111,9 @@ int main (int argc, char** argv)
     svr.Get(R"(/query/size=(\d+)/(.*))", [&](const Request& req, Response& res) {
         // Apply send latency and publish data
         std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
-        fprintf(stderr, "server_query not implemented");
-        return -1;
+        //fprintf(stderr, "server_query not implemented");
+        if(server_query(secure, req, res, global_eid))
+            return -1;
     });
 
     if (*argv[1] == 'r') {

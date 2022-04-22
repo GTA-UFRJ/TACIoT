@@ -432,8 +432,9 @@ error_code attest_client(char* client_url, sgx_ec256_public_t* client_pk)
     ret = sprintf(seal_path, "%s/%s", SEALS_PATH, token_sufix);
     if(attestation_passed)
     {
+        /*
         for (uint32_t indice=0; indice<p_att_result_msg_body->secret.payload_size; indice++)
-            printf("0x%02x, ", p_att_result_msg_body->secret.payload[indice]);
+            printf("0x%02x, ", p_att_result_msg_body->secret.payload[indice]);*/
         ret = put_secret_data(enclave_id,
                               &status,
                               context,

@@ -23,26 +23,20 @@
 void send_data_for_publishing(uint8_t* encMessage, uint32_t encMessageLen, char* data_type, uint32_t data_type_size)
 {
     size_t header_size = 3+9+5+data_type_size+6+3+10;
-    size_t snd_msg_size = (header_size+1)*sizeof(char)+(6*encMessageLen)*sizeof(char);
+    size_t snd_msg_size = (header_size+1+6*encMessageLen)*sizeof(char);
     char* snd_msg = (char*)malloc(snd_msg_size);
     sprintf(snd_msg, "pk|%s|type|%s|size|%02x|encrypted|", CLIENT_ID, data_type, (unsigned int)encMessageLen);
     char auxiliar[7];
     for (int i=0; i<int(encMessageLen); i++)
     {
         sprintf(auxiliar, "0x%02x--",encMessage[i]);
-        snd_msg[header_size+6*i] = auxiliar[0];
-        snd_msg[header_size+6*i+1] = auxiliar[1];
-        snd_msg[header_size+6*i+2] = auxiliar[2];
-        snd_msg[header_size+6*i+3] = auxiliar[3];
-        snd_msg[header_size+6*i+4] = auxiliar[4];
-        snd_msg[header_size+6*i+5] = auxiliar[5];
+        memcpy(&snd_msg[header_size+6*i], auxiliar, 6);
     }
     snd_msg[snd_msg_size] = '\0';
 
     char http_message[URL_MAX_SIZE];
     httplib::Error err = httplib::Error::Success;
     sprintf(http_message, "/publish/size=%d/%s", (int)snd_msg_size, snd_msg);
-    printf("%s\n", http_message);
 
     httplib::Client cli(SERVER_URL, COMUNICATION_PORT_2);
     std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
