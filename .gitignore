@@ -1,4 +1,5 @@
 .vscode/*
+.vscode/settings.json
 tests/*
 !.vscode/settings.json
 !.vscode/tasks.json

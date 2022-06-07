@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <chrono>
 #include <thread>
+#include "timer.h"
 
 #include "server_publish.h"
 //#include "server_processing.h"
@@ -45,6 +46,7 @@ void ocall_print_secret(uint8_t* secret, uint32_t secret_size)
 
 iot_message_t parse_request(uint32_t size, char* msg)
 {
+    Timer t("parse_request");
     iot_message_t rcv_msg;
     char* token = strtok_r(msg, "|", &msg);
     int i = 0;
@@ -92,7 +94,8 @@ iot_message_t parse_request(uint32_t size, char* msg)
 }
 
 uint32_t secure_msg_processing (iot_message_t rcv_msg, sgx_enclave_id_t global_eid, uint8_t* processed_data){
-
+    
+    Timer t("secure_msg_processing");
     // Search user file and read sealed key
     char seal_path[PATH_MAX_SIZE];
     sprintf(seal_path, "%s/%s", SEALS_PATH, rcv_msg.pk);
@@ -134,6 +137,7 @@ uint32_t secure_msg_processing (iot_message_t rcv_msg, sgx_enclave_id_t global_e
 
 void file_write (iot_message_t rcv_msg, uint8_t* processed_data, uint32_t real_size)
 {
+    Timer t("file_write");
     // Write header in disk copy
     // type|123456|size|0x35|encrypted|AES128(pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281)
     char publish_header[5+6+4+8+6+4+11+1];
@@ -164,10 +168,37 @@ void file_write (iot_message_t rcv_msg, uint8_t* processed_data, uint32_t real_s
     }
     fclose(db_file);
     free(enc_write);
+    
+/*
+    char db_path[DB_PATH_SIZE];
+    sprintf(db_path, "%s", DB_PATH);
+    FILE* db_file = fopen(db_path, "ab");
+
+    char* publish_header = (char*)malloc(45+6*real_size);
+    sprintf(publish_header, "type|%s|pk|%s|size|0x%02x|encrypted|", rcv_msg.type, rcv_msg.pk, rcv_msg.encrypted_size);
+
+    char auxiliar[7];
+    for (int i=0; i<int(real_size); i++)
+    {
+        sprintf(auxiliar, "0x%02x--", processed_data[i]);
+        memcpy(&publish_header[45-1+6*i], auxiliar, 6);
+    }
+
+    // Write result in disk copy
+    db_file = fopen(db_path, "ab");
+    if (db_file != NULL) {
+        fwrite(publish_header, 1, (size_t)(45-1+6*real_size), db_file);
+        char nl = '\n';
+        fwrite(&nl, 1, sizeof(char), db_file);
+    }
+    free(publish_header);
+    fclose(db_file); 
+*/
 }
 
 uint32_t get_publish_message(const Request& req, char* snd_msg)
 {
+    Timer t("get_publish_message");
     char c_size[4];
     uint32_t size;
     std::string a_size = req.matches[1].str();
@@ -183,6 +214,7 @@ uint32_t get_publish_message(const Request& req, char* snd_msg)
 
 int server_publish(bool secure, const Request& req, Response& res, sgx_enclave_id_t global_eid)
 {
+    Timer t("server_publish");
     // Get message sent in HTTP header
     uint32_t size;
     char* snd_msg = (char*)malloc(URL_MAX_SIZE*sizeof(char));;

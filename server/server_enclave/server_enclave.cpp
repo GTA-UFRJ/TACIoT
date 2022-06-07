@@ -281,6 +281,7 @@ sgx_status_t retrieve_data(
     //ocall_print_secret(&decMessage[0], dec_msg_len);
 
     // Get permissions and verify if querier is included
+    /*
     int i = 0;
     char auxiliar[3];
     int permission_count = 0;
@@ -301,7 +302,10 @@ sgx_status_t retrieve_data(
                 *accepted = 1;
             permission_count++;
         }
-    }
+    }*/
+
+    // Allows automatic access for benchmarking 
+    *accepted = 1; 
 
     // Encrypt data with querier key
     if (*accepted){

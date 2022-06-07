@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <chrono>
 #include <thread>
+#include "timer.h"
 
 #include "client_publish.h"
 #include "encryption.h"
@@ -19,6 +20,19 @@
 #include "config_macros.h"      
 #include "ecp.h"              
 #include HTTPLIB_PATH
+
+void stop_signal() {
+    char http_message[URL_MAX_SIZE];
+    httplib::Error err = httplib::Error::Success;
+    sprintf(http_message, "/stop_test");
+
+    httplib::Client cli(SERVER_URL, COMUNICATION_PORT_2);
+    if (auto res = cli.Get(http_message)) {
+    } else {
+        err = res.error();
+        printf("Failed: error %d\n", (int)err);
+    }
+}
 
 void send_data_for_publishing(uint8_t* encMessage, uint32_t encMessageLen, char* data_type, uint32_t data_type_size)
 {
@@ -40,15 +54,18 @@ void send_data_for_publishing(uint8_t* encMessage, uint32_t encMessageLen, char*
 
     httplib::Client cli(SERVER_URL, COMUNICATION_PORT_2);
     std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
-    if (auto res = cli.Get(http_message)) {
-        printf("Client sent %s to server\n", http_message);
-        if (res->status == 200) {
-            fprintf(stdout,"\n%s\n",res->body.c_str());
-            printf("Success: received 200 from server\n");
+    {
+        Timer t("communication");
+        if (auto res = cli.Get(http_message)) {
+            //printf("Client sent %s to server\n", http_message);
+            if (res->status == 200) {
+                //fprintf(stdout,"\n%s\n",res->body.c_str());
+                //printf("Success: received 200 from server\n");
+            }
+        } else {
+            err = res.error();
+            printf("Failed: error %d\n", (int)err);
         }
-    } else {
-        err = res.error();
-        printf("Failed: error %d\n", (int)err);
     }
     free(snd_msg);
 }

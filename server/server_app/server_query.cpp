@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <chrono>
 #include <thread>
+#include "timer.h"
 
 #include "server_query.h"
 #include "sample_libcrypto.h"   // sample_aes_gcm_128bit_key_t
@@ -32,6 +33,7 @@ using namespace httplib;
 
 uint32_t parse_query(uint32_t size, char* msg, char* pk)
 {
+    Timer t("parse_query");
     uint32_t index;
     char* token = strtok_r(msg, "|", &msg);
     int i = 0;
@@ -56,6 +58,7 @@ uint32_t parse_query(uint32_t size, char* msg, char* pk)
 
 stored_data_t get_stored_parameters(char* msg)
 {
+    Timer t("get_stored_parameters");
     // type|%s|pk|%s|size|0x%02x|encrypted|
     stored_data_t stored;
     uint32_t index;
@@ -99,6 +102,7 @@ stored_data_t get_stored_parameters(char* msg)
 
 void file_read(uint32_t index, char* data)
 {
+    Timer t("file_read");
     char db_path[DB_PATH_SIZE];
     sprintf(db_path, "%s", DB_PATH);
     FILE* db_file = fopen(db_path, "rb");
@@ -141,6 +145,7 @@ void file_read(uint32_t index, char* data)
 
 uint32_t get_query_message(const Request& req, char* snd_msg)
 {
+    Timer t("get_query_message");
     char c_size[4];
     uint32_t size;
     std::string a_size = req.matches[1].str();
@@ -158,6 +163,7 @@ uint32_t get_query_message(const Request& req, char* snd_msg)
 
 uint8_t enclave_get_response(stored_data_t stored, sgx_enclave_id_t global_eid, uint8_t* response, char* querier_pk)
 {
+    Timer t("enclave_get_response");
     // Get querier sealed key
     char seal_path[PATH_MAX_SIZE];
     sprintf(seal_path, "%s/%s", SEALS_PATH, querier_pk);
@@ -212,6 +218,7 @@ uint8_t enclave_get_response(stored_data_t stored, sgx_enclave_id_t global_eid, 
 
 void make_response(uint8_t* enc_data, uint32_t enc_data_size, char* response)
 {
+    Timer t("make_response");
     sprintf(response, "size|0x%02x|data|", enc_data_size);
     char auxiliar[7];
     for (uint32_t count=0; count<enc_data_size; count++)
@@ -224,6 +231,7 @@ void make_response(uint8_t* enc_data, uint32_t enc_data_size, char* response)
 
 int server_query(bool secure, const Request& req, Response& res, sgx_enclave_id_t global_eid)
 {
+    Timer t("server_query");
     // Get message sent in HTTP header
     char* snd_msg = (char*)malloc(URL_MAX_SIZE*sizeof(char));
     uint32_t size = get_query_message(req, snd_msg);
@@ -256,7 +264,7 @@ int server_query(bool secure, const Request& req, Response& res, sgx_enclave_id_
         make_response(message.encrypted, message.encrypted_size, response);
         res.set_content(response, "text/plain");
     }
-    printf("%s\n", response);
+    //printf("%s\n", response);
     free(response);
     free(enc_data);
     free(message.encrypted);

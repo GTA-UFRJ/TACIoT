@@ -75,6 +75,8 @@ int start_attestation_client ()
 
 int main (int argc, char** argv)
 {
+    unsigned concurrentRequestsCount = 0;
+
     using namespace httplib;
     Server svr;
 
@@ -87,6 +89,7 @@ int main (int argc, char** argv)
     *argv[1]=='i' ? secure=false : secure=true;  
 
     // Initialize enclave
+    
     sgx_enclave_id_t global_eid = 0;
     char* token_filename;
     token_filename = (char*)malloc(PATH_MAX_SIZE*sizeof(char));
@@ -104,16 +107,25 @@ int main (int argc, char** argv)
     svr.Get(R"(/publish/size=(\d+)/(.*))", [&](const Request& req, Response& res) {
         // Apply send latency and publish data
         std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
+        concurrentRequestsCount++;
+        printf("\nCONCURRENT PUBLISH COUNT: %u\n", concurrentRequestsCount);
         if(server_publish(secure, req, res, global_eid))
             return -1;
+        concurrentRequestsCount--;
     });
 
     svr.Get(R"(/query/size=(\d+)/(.*))", [&](const Request& req, Response& res) {
         // Apply send latency and publish data
         std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
-        //fprintf(stderr, "server_query not implemented");
+        concurrentRequestsCount++;
+        printf("\nCONCURRENT QUERY COUNT: %u\n", concurrentRequestsCount);
         if(server_query(secure, req, res, global_eid))
             return -1;
+        concurrentRequestsCount--;
+    });
+
+    svr.Get(R"(/stop_test)", [&](const Request& req, Response& res) {
+        svr.stop();
     });
 
     if (*argv[1] == 'r') {

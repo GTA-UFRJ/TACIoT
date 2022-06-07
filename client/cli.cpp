@@ -44,8 +44,8 @@ int main (int argc, char *argv[])
         debug_print_encrypted(queried_data_size, queried_data);
     }
     else if (*argv[1] == 'r')
-    {
         error = initialize_communication();
-    }
+    else if (*argv[1] == 's') 
+        stop_signal();
     return error;
 }

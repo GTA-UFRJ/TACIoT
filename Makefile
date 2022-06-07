@@ -97,7 +97,8 @@ Server_Cpp_Files := server/server_app/server.cpp \
 					server/server_app/register_client.cpp \
 					utils/utils.cpp \
 					utils/utils_sgx.cpp \
-					utils/message_handler.cpp
+					utils/message_handler.cpp \
+					benchmark/timer.cpp
 
 Server_Include_Paths := -Iutils \
 					 	-I$(SGX_SDK)/include \
@@ -106,7 +107,8 @@ Server_Include_Paths := -Iutils \
 					 	-Isample_libcrypto \
 					 	-Iecp \
 					 	-IIAS \
-					 	-I$(HTTPLIB_DIR)
+					 	-I$(HTTPLIB_DIR) \
+						-Ibenchmark
 
 Server_C_Flags := -fPIC -Wno-attributes $(Server_Include_Paths) -DLATENCY_MS=$(LATENCY)
 
@@ -158,7 +160,8 @@ Client_Cpp_Files := client/cli.cpp \
 					ecp/ecp.cpp \
 					IAS/ias_simulation.cpp \
 					utils/utils.cpp \
-					utils/message_handler.cpp
+					utils/message_handler.cpp \
+					benchmark/timer.cpp
 
 Client_Include_Paths := -I. \
 						-Iclient \
@@ -167,7 +170,8 @@ Client_Include_Paths := -I. \
 						-Iutils \
 						-Isample_libcrypto \
 						-I$(SGX_SDK)/include \
-					 	-I$(HTTPLIB_DIR) 
+					 	-I$(HTTPLIB_DIR) \
+						-Ibenchmark
 
 Client_C_Flags := -shared -fPIC -Wno-attributes -I$(SGX_SDK)/include $(Client_Include_Paths) -DLATENCY_MS=$(LATENCY)
 

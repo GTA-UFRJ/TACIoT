@@ -18,6 +18,7 @@
 #include "sgx_urts.h"
 #include "utils_sgx.h"
 #include "sgx_tcrypto.h"
+#include "timer.h"
 
 #ifndef TRUE
 # define TRUE 1
@@ -38,6 +39,7 @@ void print_error_message(sgx_status_t ret) {
  *   Step 3: save the launch token if it is updated
  */
 int initialize_enclave(sgx_enclave_id_t* eid, char* launch_token_path, char* enclave_name) {
+    Timer t("initialize_enclave");
     const char* token_path = launch_token_path;
     sgx_launch_token_t token = {0};
     sgx_status_t ret = SGX_ERROR_UNEXPECTED;

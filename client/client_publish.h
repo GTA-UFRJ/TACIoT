@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include "sample_libcrypto.h"   
 
+// Stop the server (for test only)
+void stop_signal();
+
 // Send data for publishing
 void send_data_for_publishing(char* , size_t, char*, uint32_t);
 
