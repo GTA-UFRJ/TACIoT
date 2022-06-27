@@ -1,0 +1,16 @@
+
+initialize_enclave(calls=1): 6143 +- 0us
+server_publish(calls=1201): 411 +- 0us
+get_publish_message(calls=1201): 6 +- 0us
+parse_request(calls=1201): 12 +- 0us
+secure_msg_processing(calls=1201): 137 +- 0us
+file_write(calls=1201): 231 +- 0us
+
+initialize_enclave(calls=1): 5928 +- 0us
+server_query(calls=1201): 264 +- 0us
+get_query_message(calls=1201): 5 +- 0us
+parse_query(calls=1201): 2 +- 0us
+file_read(calls=1201): 54 +- 0us
+get_stored_parameters(calls=1201): 3 +- 0us
+enclave_get_response(calls=1201): 137 +- 0us
+make_response(calls=1201): 34 +- 0us

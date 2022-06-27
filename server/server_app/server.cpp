@@ -9,6 +9,7 @@
 #include <chrono>
 #include <thread>
 #include <string.h>
+#include "timer.h"
 
 #include "utils.h"
 #include "utils_sgx.h"
@@ -108,7 +109,7 @@ int main (int argc, char** argv)
         // Apply send latency and publish data
         std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
         concurrentRequestsCount++;
-        printf("\nCONCURRENT PUBLISH COUNT: %u\n", concurrentRequestsCount);
+        //printf("\nCONCURRENT PUBLISH COUNT: %u\n", concurrentRequestsCount);
         if(server_publish(secure, req, res, global_eid))
             return -1;
         concurrentRequestsCount--;
@@ -118,7 +119,7 @@ int main (int argc, char** argv)
         // Apply send latency and publish data
         std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
         concurrentRequestsCount++;
-        printf("\nCONCURRENT QUERY COUNT: %u\n", concurrentRequestsCount);
+        //printf("\nCONCURRENT QUERY COUNT: %u\n", concurrentRequestsCount);
         if(server_query(secure, req, res, global_eid))
             return -1;
         concurrentRequestsCount--;
@@ -136,5 +137,7 @@ int main (int argc, char** argv)
     { 
         svr.listen(SERVER_URL, COMUNICATION_PORT_2);
     }
+    printf("\n");
+    Timer::print_times();
 }
 
