@@ -174,8 +174,7 @@ sgx_status_t process_data(
     uint32_t dec_msg_len, 
     uint8_t*  processed_result,
     uint32_t buffer_max_size,
-    uint32_t* processed_result_size,
-    unsigned int process)
+    uint32_t* processed_result_size)
 {
     // AES128(pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281)
     // Unseal key
@@ -205,18 +204,7 @@ sgx_status_t process_data(
     // Process data
     uint8_t proc[dec_msg_len];
     memcpy(proc, decMessage, sizeof(uint8_t)*dec_msg_len);
-    //apply_processing(process, decMessage, dec_msg_len, proc);
-    /*
-    switch ((proc_code_t)process){
-        case none:
-        memcpy(proc, decMessage, sizeof(uint8_t)*dec_msg_len);
-        break;
-
-        default:
-        break;
-    }*/
-    //*processed_result_size = 12+16+dec_msg_len;
-
+    
     // Encrypt data using key
     *processed_result_size = (uint32_t)(16 + 12 + sizeof(uint8_t)*(dec_msg_len));
     uint8_t aes_gcm_iv[12] = {0};

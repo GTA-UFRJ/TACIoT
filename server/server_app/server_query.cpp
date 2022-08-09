@@ -14,6 +14,9 @@
 #include "timer.h"
 
 #include "server_query.h"
+#include "server_processing.h"
+#include "server_disk_manager.h"
+
 #include "sample_libcrypto.h"   // sample_aes_gcm_128bit_key_t
 #include "config_macros.h"      // ULTRALIGH_SAMPLE
 #include "utils_sgx.h"
@@ -54,93 +57,6 @@ uint32_t parse_query(uint32_t size, char* msg, char* pk)
         //printf("%s\n", token);
     }
     return index;
-}
-
-stored_data_t get_stored_parameters(char* msg)
-{
-    Timer t("get_stored_parameters");
-    // type|%s|pk|%s|size|0x%02x|encrypted|
-    stored_data_t stored;
-    uint32_t index;
-    char* token = strtok_r(msg, "|", &msg);
-    int i = 0;
-    char auxiliar[3];
-    while (token != NULL && i<6)
-    {
-        i++;
-        token = strtok_r(NULL, "|", &msg);
-        // Get type     
-        if (i == 1)
-        {
-            memcpy(stored.type, token, 6);
-            stored.type[6] = '\0';
-        }
-        // Get client key       
-        if (i == 3)
-        {
-            memcpy(stored.pk, token, 8);
-            stored.pk[8] = '\0';
-        }
-        // Get encrypted message size
-        if (i == 5)
-        {
-            stored.encrypted_size = (uint32_t)strtoul(token,NULL,16);
-            //printf("%u\n", stored.encrypted_size);
-        }
-    }
-
-    // Get encrypted
-    stored.encrypted = (uint8_t*)malloc((stored.encrypted_size+1) * sizeof(uint8_t));
-    if (stored.encrypted == NULL)
-        printf("Allocation error\n");
-    memcpy(stored.encrypted, msg, stored.encrypted_size);
-    stored.encrypted[stored.encrypted_size] = 0;
-    //debug_print_encrypted((size_t)(stored.encrypted_size), stored.encrypted);
-
-    return stored;
-}
-
-void file_read(uint32_t index, char* data)
-{
-    Timer t("file_read");
-    char db_path[DB_PATH_SIZE];
-    sprintf(db_path, "%s", DB_PATH);
-    FILE* db_file = fopen(db_path, "rb");
-    if (db_file == NULL)
-    {
-        printf("Failed opening %s file", db_path);
-    }
-    fseek(db_file, (long)index, 0);
-    char published_header[45];
-    fread(published_header,1,44,db_file);
-    published_header[44] = 0;
-    memcpy(&data[0], published_header, 44);
-
-    //printf("%s\n", published_header);
-
-    char auxiliar[3];
-    auxiliar[0] = published_header[31];
-    auxiliar[1] = published_header[32];
-    auxiliar[2] = '\0';
-    uint32_t encrypted_size = (uint32_t)strtoul(auxiliar, NULL, 16);
-
-    char *encrypted = (char*)malloc(6*encrypted_size+1);
-    fread(encrypted,1,encrypted_size*6,db_file);
-    for (uint32_t i=0; i<encrypted_size; i++){
-        auxiliar[0] = encrypted[6*i+2];
-        auxiliar[1] = encrypted[6*i+3];
-        auxiliar[2] = '\0';
-        data[44+i] = (char)strtoul(auxiliar, NULL, 16);
-    }
-    data[44+encrypted_size] = '\0';
-    fclose(db_file);
-    free(encrypted);
-/*
-    uint8_t* data_int = (uint8_t*)malloc(44+encrypted_size);
-    memcpy(data_int, data, (size_t)(44+encrypted_size));
-    debug_print_encrypted(44+(size_t)encrypted_size,data_int);
-    free(data_int);
-    */
 }
 
 uint32_t get_query_message(const Request& req, char* snd_msg)

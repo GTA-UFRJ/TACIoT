@@ -4,7 +4,6 @@
  * Descripton: process in enclave client data before publishing
  */
 
-#include <cstdio>
 #include <stdlib.h>
 #include <iostream>
 #include <string.h>
@@ -14,7 +13,9 @@
 #include "timer.h"
 
 #include "server_publish.h"
-//#include "server_processing.h"
+#include "server_processing.h"
+#include "server_disk_manager.h"
+
 #include "sample_libcrypto.h"   // sample_aes_gcm_128bit_key_t
 #include "config_macros.h"      // ULTRALIGH_SAMPLE
 #include "utils_sgx.h"
@@ -93,109 +94,6 @@ iot_message_t parse_request(uint32_t size, char* msg)
     return rcv_msg;
 }
 
-uint32_t secure_msg_processing (iot_message_t rcv_msg, sgx_enclave_id_t global_eid, uint8_t* processed_data){
-    
-    Timer t("secure_msg_processing");
-    // Search user file and read sealed key
-    char seal_path[PATH_MAX_SIZE];
-    sprintf(seal_path, "%s/%s", SEALS_PATH, rcv_msg.pk);
-    FILE* seal_file = fopen(seal_path, "rb");
-    size_t sealed_size = sizeof(sgx_sealed_data_t) + sizeof(uint8_t)*16;
-    uint8_t* sealed_data = (uint8_t*)malloc(sealed_size);
-    if (seal_file == NULL) {
-        printf("\nWarning: Failed to open the seal file \"%s\".\n", seal_path);
-        fclose(seal_file);
-        free(sealed_data);
-        return 1;
-    }
-    else {
-        fread(sealed_data,1,sealed_size,seal_file);
-        fclose(seal_file);
-    }
-
-    //Detect processing thath will be applied 
-    //proc_code_t proc_code = detect_processing_code(rcv_msg.type);
-    unsigned proc_code = 0;
-
-    // Call enclave to unseal key, decrypt with the key, process and return encrypted result
-    sgx_status_t ecall_status;
-    sgx_status_t sgx_status;
-    uint32_t real_size;
-    uint32_t decMessageLen = rcv_msg.encrypted_size - (SAMPLE_AESGCM_MAC_SIZE + SAMPLE_AESGCM_IV_SIZE);
-    sgx_status = process_data(global_eid, &ecall_status,
-        (sgx_sealed_data_t*)sealed_data,            //sealed key 
-        rcv_msg.encrypted,                          //data for being decrypted and processed 
-        rcv_msg.encrypted_size,                     //encrypted data size
-        decMessageLen,                              //bufer size with decrypted data  
-        processed_data,                             //data for being published
-        (uint32_t)RESULT_MAX_SIZE,                  //buffer max size with data for being published
-        &real_size,                                 //data real size
-        (unsigned)proc_code                         //processing for being applied               
-    );
-    return real_size;
-}
-
-void file_write (iot_message_t rcv_msg, uint8_t* processed_data, uint32_t real_size)
-{
-    Timer t("file_write");
-    // Write header in disk copy
-    // type|123456|size|0x35|encrypted|AES128(pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281)
-    char publish_header[5+6+4+8+6+4+11+1];
-    sprintf(publish_header, "type|%s|pk|%s|size|0x%02x|encrypted|", rcv_msg.type, rcv_msg.pk, rcv_msg.encrypted_size);
-    char db_path[DB_PATH_SIZE];
-    sprintf(db_path, "%s", DB_PATH);
-    FILE* db_file = fopen(db_path, "ab");
-    if (db_file != NULL) {
-        fwrite(publish_header, 1, (size_t)5+6+4+8+6+4+11, db_file);
-    }
-    fclose(db_file);
-
-    char auxiliar[7];
-    char *enc_write = (char*)malloc(6*real_size);
-    for (int i=0; i<int(real_size); i++)
-    {
-        sprintf(auxiliar, "0x%02x--", processed_data[i]);
-        memcpy(&enc_write[6*i], auxiliar, 6);
-    }
-
-    // Write result in disk copy
-    sprintf(db_path, "%s", DB_PATH);
-    db_file = fopen(db_path, "ab");
-    if (db_file != NULL) {
-        fwrite(enc_write, 1, (size_t)6*real_size, db_file);
-        char nl = '\n';
-        fwrite(&nl, 1, sizeof(char), db_file);
-    }
-    fclose(db_file);
-    free(enc_write);
-    
-/*
-    char db_path[DB_PATH_SIZE];
-    sprintf(db_path, "%s", DB_PATH);
-    FILE* db_file = fopen(db_path, "ab");
-
-    char* publish_header = (char*)malloc(45+6*real_size);
-    sprintf(publish_header, "type|%s|pk|%s|size|0x%02x|encrypted|", rcv_msg.type, rcv_msg.pk, rcv_msg.encrypted_size);
-
-    char auxiliar[7];
-    for (int i=0; i<int(real_size); i++)
-    {
-        sprintf(auxiliar, "0x%02x--", processed_data[i]);
-        memcpy(&publish_header[45-1+6*i], auxiliar, 6);
-    }
-
-    // Write result in disk copy
-    db_file = fopen(db_path, "ab");
-    if (db_file != NULL) {
-        fwrite(publish_header, 1, (size_t)(45-1+6*real_size), db_file);
-        char nl = '\n';
-        fwrite(&nl, 1, sizeof(char), db_file);
-    }
-    free(publish_header);
-    fclose(db_file); 
-*/
-}
-
 uint32_t get_publish_message(const Request& req, char* snd_msg)
 {
     Timer t("get_publish_message");
@@ -227,16 +125,11 @@ int server_publish(bool secure, const Request& req, Response& res, sgx_enclave_i
     rcv_msg = parse_request(size, snd_msg);
     free(snd_msg);
 
-    if (secure == false)
-    {
-        file_write (rcv_msg, rcv_msg.encrypted, rcv_msg.encrypted_size);
-    }
-    if (secure == true)
-    {
-        uint8_t processed_data [RESULT_MAX_SIZE];
-        uint32_t real_size = real_size = secure_msg_processing(rcv_msg, global_eid, processed_data);
-        file_write (rcv_msg, processed_data, real_size);
-    }
+    // Identify data type and call function to process it
+    if(!strcmp(rcv_msg.type, "555555"))
+        aggregation(rcv_msg, global_eid, secure);
+    else
+        no_processing(rcv_msg, global_eid, secure);
     
     free(rcv_msg.encrypted);
     res.set_content("ack", "text/plain");

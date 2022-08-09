@@ -62,7 +62,7 @@
 #endif
 
 #ifndef DATA_TYPE_SAMPLE
-#define DATA_TYPE_SAMPLE "123456"
+#define DATA_TYPE_SAMPLE "555555"
 #endif
 
 #ifndef DATA_TYPE_SIZE
@@ -70,7 +70,7 @@
 #endif
 
 #ifndef ULTRALIGHT_SAMPLE
-#define ULTRALIGHT_SAMPLE "pk|72d41281|type|123456|payload|250110091|permission1|72d41281"
+#define ULTRALIGHT_SAMPLE "pk|72d41281|type|555555|payload|250110091|permission1|72d41281"
 #endif
 
 #ifndef ULTRALIGHT_SIZE

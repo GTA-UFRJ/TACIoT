@@ -70,8 +70,7 @@ enclave {
                                          uint32_t dec_msg_len, 
                                          [out,size=buffer_max_size] uint8_t* processed_result,
                                          uint32_t buffer_max_size,
-                                         [out,count=1] uint32_t* processed_result_size,
-                                         unsigned int process);      
+                                         [out,count=1] uint32_t* processed_result_size);      
         public sgx_status_t retrieve_data([in,count=1] sgx_sealed_data_t* sealed_querier_key,
                                           [in,count=1] sgx_sealed_data_t* sealed_publisher_key,
                                           [in,size=encrypted_data_size] uint8_t* original_data,

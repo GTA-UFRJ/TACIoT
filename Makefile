@@ -94,6 +94,8 @@ endif
 Server_Cpp_Files := server/server_app/server.cpp \
 					server/server_app/server_publish.cpp \
 					server/server_app/server_query.cpp \
+					server/server_app/server_processing.cpp \
+					server/server_app/server_disk_manager.cpp \
 					server/server_app/register_client.cpp \
 					utils/utils.cpp \
 					utils/utils_sgx.cpp \
