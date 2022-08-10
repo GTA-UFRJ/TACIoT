@@ -57,9 +57,8 @@ void no_processing(iot_message_t rcv_msg, sgx_enclave_id_t global_eid, bool secu
     }
 }
 
-/*
 uint32_t aggregation_i(iot_message_t rcv_msg, uint8_t* processed_data) {
-    
+
     Timer t("aggregation_i");
 
     // Search user file and read plain key
@@ -82,24 +81,46 @@ uint32_t aggregation_i(iot_message_t rcv_msg, uint8_t* processed_data) {
     // Count number of lines in file
     uint32_t data_count = count_entries();
 
-    // Create data array
-    char** datas = (char*)malloc(data_count*sizeof(char*)); 
+    // Create arrays for datas and datas sizes 
+    uint8_t** datas = (uint8_t**)malloc(data_count*sizeof(uint8_t*)); 
+    uint32_t* datas_sizes = (uint32_t*)malloc(data_count*sizeof(uint32_t)); 
 
-    // Read all data
+    // Read all data in file
     char* data = (char *)malloc(MAX_DATA_SIZE*sizeof(char));
-    for(uint32_t index=0; index<data_count; index++) {
+    uint32_t filtered_data_count = 0;
+    for(uint32_t index=0; index < data_count; index++) {
         file_read(index, data);
         stored_data_t stored_data = get_stored_parameters(data);
+        memset(data, 0, MAX_DATA_SIZE*sizeof(char));
 
         // Filter energy consumption data from this client
-        strcmp(rcv_msg.pk, stored_data.pk);
-        
-         
-        if(stored_data.type == "555555")
-
+        if(stored_data.type == "123456" && strcmp(rcv_msg.pk, stored_data.pk)) {
+            memcpy(datas[filtered_data_count], stored_data.encrypted, stored_data.encrypted_size);
+            datas_sizes[filtered_data_count] = stored_data.encrypted_size;
+        }
+        filtered_data_count++;
     }
+
+    // Call function to aggregate 
+    // pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281
+    unsigned long int result;
+    //result = sum_encrypted_data(plain_data, datas, datas_sizes, filtered_data_count);
+
+    // Print data for test
+    // printf("Aggregated: %lu", result);
+
+
+    // We will build this encryption section
+
+    // Build encrypted data format
+    //sprintf("pk|...")
+
+    // Encrypt data (using sample_rijndael128GCM_encrypt from dynamic library)
+
+    // Write data in file
+    //file_write(rcv_msg, encrypted_data, encrypted_data_size);
+
 }
-*/
 
 void aggregation(iot_message_t rcv_msg, sgx_enclave_id_t global_eid, bool secure) {
     printf("Not finished yet!\n");

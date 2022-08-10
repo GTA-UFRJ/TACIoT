@@ -51,6 +51,7 @@ void send_data_for_publishing(uint8_t* encMessage, uint32_t encMessageLen, char*
     char http_message[URL_MAX_SIZE];
     httplib::Error err = httplib::Error::Success;
     sprintf(http_message, "/publish/size=%d/%s", (int)snd_msg_size, snd_msg);
+    printf("%s\n",http_message);
 
     httplib::Client cli(SERVER_URL, COMUNICATION_PORT_2);
     std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));

@@ -70,11 +70,11 @@
 #endif
 
 #ifndef ULTRALIGHT_SAMPLE
-#define ULTRALIGHT_SAMPLE "pk|72d41281|type|555555|payload|250110091|permission1|72d41281"
+#define ULTRALIGHT_SAMPLE "pk|72d41281|type|555555|payload|250|permission1|72d41281"
 #endif
 
 #ifndef ULTRALIGHT_SIZE
-#define ULTRALIGHT_SIZE 62
+#define ULTRALIGHT_SIZE 56
 #endif
 
 #ifndef SHARED_SECRET
