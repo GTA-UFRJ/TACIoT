@@ -6,6 +6,58 @@
 
 #include "server_processing.h"
 #include "server_disk_manager.h"
+#include "sample_libcrypto.h"
+
+const sample_aes_gcm_128bit_key_t formatted_key[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+
+unsigned long sum_encrypted_data_i(uint8_t* key, uint8_t** data_array, uint32_t* size_array, uint32_t data_count) {
+
+    Timer t("sum_encrypted_data");
+    /*
+    const sample_aes_gcm_128bit_key_t formatted_key[16] = 
+    {key[0], key[1], key[2], key[3], key[4], key[5], key[6], key[7],
+     key[8], key[9], key[10],key[11],key[12],key[13],key[14],key[15]};
+    */
+    const sample_aes_gcm_128bit_key_t (*p_formatted_key)[16];
+    p_formatted_key = &formatted_key;
+
+    // Iterate over data array
+    unsigned long total = 0;
+    uint8_t* client_data = (uint8_t*)malloc(MAX_DATA_SIZE*sizeof(uint8_t));
+    memset(client_data,0,MAX_DATA_SIZE*sizeof(uint8_t));
+    for (uint32_t index = 0; index < data_count; index++) {
+
+        // Encrypted data:      | MAC | IV | AES128(data)
+        // Buffer size:           16    12   size(data)
+
+        // MAC reference:         &data       :   &data+16
+        // IV reference:          &data+16    :   &data+16+12
+        // AES128(data) ref:      &data+12+16 : 
+
+        sample_status_t ret;
+        size_t client_data_size = size_array[index] - SAMPLE_AESGCM_MAC_SIZE - SAMPLE_AESGCM_IV_SIZE;
+
+        // Decrypt data with key
+        ret = sample_rijndael128GCM_encrypt(
+            *p_formatted_key,                                                        // 128 bits key = 16 bytes key
+            data_array[index] + SAMPLE_AESGCM_MAC_SIZE + SAMPLE_AESGCM_IV_SIZE,     // Origin 
+            (uint32_t)client_data_size,                                             // Origin size
+            client_data,                                                            // AES128(origin)
+            data_array[index] + SAMPLE_AESGCM_MAC_SIZE, SAMPLE_AESGCM_IV_SIZE,      // IV + IV size
+            NULL, 0, (sample_aes_gcm_128bit_tag_t *) (data_array[index]));          // MAC 
+        
+        // Copy payload in memory and increment total
+        // pk|72d41281|type|weg_multimeter|payload|250|permission1|72d41281
+        char payload[4];
+        memcpy(payload, client_data+32, 3);
+        payload[3] = '\0';
+
+        total += strtoul(payload, NULL, 10);
+        memset(client_data,0,MAX_DATA_SIZE*sizeof(uint8_t));
+    }
+    free(client_data);
+    return total;
+}
 
 uint32_t no_processing_s(iot_message_t rcv_msg, sgx_enclave_id_t global_eid, uint8_t* processed_data){
     
@@ -59,8 +111,6 @@ void no_processing(iot_message_t rcv_msg, sgx_enclave_id_t global_eid, bool secu
 
 uint32_t aggregation_i(iot_message_t rcv_msg, uint8_t* processed_data) {
 
-    Timer t("aggregation_i");
-
     // Search user file and read plain key
     char seal_path[PATH_MAX_SIZE];
     sprintf(seal_path, "%s/%s_i", SEALS_PATH, rcv_msg.pk);
@@ -87,30 +137,33 @@ uint32_t aggregation_i(iot_message_t rcv_msg, uint8_t* processed_data) {
 
     // Read all data in file
     char* data = (char *)malloc(MAX_DATA_SIZE*sizeof(char));
+    memset(data, 0, MAX_DATA_SIZE*sizeof(char));
     uint32_t filtered_data_count = 0;
+    uint32_t offset = 0;
     for(uint32_t index=0; index < data_count; index++) {
-        file_read(index, data);
+        file_read(offset, data);
         stored_data_t stored_data = get_stored_parameters(data);
         memset(data, 0, MAX_DATA_SIZE*sizeof(char));
+        offset += 5+7+3+9+5+5+10+stored_data.encrypted_size*6+1;
 
         // Filter energy consumption data from this client
-        if(stored_data.type == "123456" && strcmp(rcv_msg.pk, stored_data.pk)) {
+        datas[filtered_data_count] = (uint8_t*)malloc(stored_data.encrypted_size*sizeof(uint8_t*));
+        if(strcmp(stored_data.type, "123456") == 0 && strcmp(rcv_msg.pk, stored_data.pk) == 0) {
             memcpy(datas[filtered_data_count], stored_data.encrypted, stored_data.encrypted_size);
             datas_sizes[filtered_data_count] = stored_data.encrypted_size;
+            filtered_data_count++;
         }
-        filtered_data_count++;
     }
+    free(data);
 
     // Call function to aggregate 
     // pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281
     unsigned long int result;
-    //result = sum_encrypted_data(plain_data, datas, datas_sizes, filtered_data_count);
+    result = sum_encrypted_data_i(plain_data, datas, datas_sizes, filtered_data_count);
+    free(plain_data);
 
     // Print data for test
-    // printf("Aggregated: %lu", result);
-
-
-    // We will build this encryption section
+    printf("Aggregated: %lu\n", result);
 
     // Build encrypted data format
     //sprintf("pk|...")
@@ -123,17 +176,19 @@ uint32_t aggregation_i(iot_message_t rcv_msg, uint8_t* processed_data) {
 }
 
 void aggregation(iot_message_t rcv_msg, sgx_enclave_id_t global_eid, bool secure) {
-    printf("Not finished yet!\n");
-    /*
+
     if(secure == false) {
         uint8_t processed_data [RESULT_MAX_SIZE];
         uint32_t real_size = aggregation_i(rcv_msg, processed_data);
-        file_write (rcv_msg, rcv_msg.encrypted, rcv_msg.encrypted_size);
-        file_write (rcv_msg, processed_data, real_size);
+        //file_write (rcv_msg, rcv_msg.encrypted, rcv_msg.encrypted_size);
+        //file_write (rcv_msg, processed_data, real_size);
     }
     else {
+        printf("Not implemented!\n");
+        /*
         uint8_t processed_data [RESULT_MAX_SIZE];
         uint32_t real_size = no_processing_s(rcv_msg, global_eid, processed_data);
         file_write (rcv_msg, processed_data, real_size);
-    }*/
+        */
+    }
 }

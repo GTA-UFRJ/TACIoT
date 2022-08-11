@@ -27,6 +27,8 @@
 #include "sgx_uae_quote_ex.h"
 #include "sgx_tcrypto.h"
 
+unsigned long sum_encrypted_data_i(uint8_t*, uint8_t**, uint32_t*, uint32_t);
+
 uint32_t no_processing_s(iot_message_t, sgx_enclave_id_t, uint8_t*);
 void no_processing(iot_message_t, sgx_enclave_id_t, bool);
 

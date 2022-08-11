@@ -118,7 +118,7 @@ int server_publish(bool secure, const Request& req, Response& res, sgx_enclave_i
     char* snd_msg = (char*)malloc(URL_MAX_SIZE*sizeof(char));;
     size = get_publish_message(req, snd_msg);
     //printf("Request size = %u\nRequest msg = %s\n", size, snd_msg);
-    
+ 
     // Server receives and separate parameters according to Ultrlight protocol
     // type|123456|size|0x35|encrypted|AES128(pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281)    
     iot_message_t rcv_msg;
@@ -130,7 +130,7 @@ int server_publish(bool secure, const Request& req, Response& res, sgx_enclave_i
         aggregation(rcv_msg, global_eid, secure);
     else
         no_processing(rcv_msg, global_eid, secure);
-    
+
     free(rcv_msg.encrypted);
     res.set_content("ack", "text/plain");
     return 0; 

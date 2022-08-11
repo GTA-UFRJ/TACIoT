@@ -1,6 +1,10 @@
 # TACIoT
 Trusted Acess Control for IoT Data in Cloud using Enclaves
 
+## Important note
+This current version might be unstable. Go back to commit eedcab5, where aggregation was
+not implemented yet, to benchmark system performance.
+
 ## Requirements
 In order to run the project, you have to:
 * Install SGX SDK.
