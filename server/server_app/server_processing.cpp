@@ -12,7 +12,7 @@ const sample_aes_gcm_128bit_key_t formatted_key[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0
 
 unsigned long sum_encrypted_data_i(uint8_t* key, uint8_t** data_array, uint32_t* size_array, uint32_t data_count) {
 
-    Timer t("sum_encrypted_data");
+    Timer t("sum_encrypted_data_i");
     /*
     const sample_aes_gcm_128bit_key_t formatted_key[16] = 
     {key[0], key[1], key[2], key[3], key[4], key[5], key[6], key[7],
@@ -111,6 +111,8 @@ void no_processing(iot_message_t rcv_msg, sgx_enclave_id_t global_eid, bool secu
 
 uint32_t aggregation_i(iot_message_t rcv_msg, uint8_t* processed_data) {
 
+    Timer t("aggregation_i");
+
     // Search user file and read plain key
     char seal_path[PATH_MAX_SIZE];
     sprintf(seal_path, "%s/%s_i", SEALS_PATH, rcv_msg.pk);
@@ -163,7 +165,7 @@ uint32_t aggregation_i(iot_message_t rcv_msg, uint8_t* processed_data) {
     free(plain_data);
 
     // Print data for test
-    printf("Aggregated: %lu\n", result);
+    //printf("Aggregated: %lu\n", result);
 
     // Build encrypted data format
     //sprintf("pk|...")
@@ -172,6 +174,74 @@ uint32_t aggregation_i(iot_message_t rcv_msg, uint8_t* processed_data) {
 
     // Write data in file
     //file_write(rcv_msg, encrypted_data, encrypted_data_size);
+
+}
+
+uint32_t aggregation_s(iot_message_t rcv_msg, uint8_t* processed_data, sgx_enclave_id_t global_eid) { 
+
+    Timer t("aggregation_s");
+
+    // Search user file and read sealed key
+    char seal_path[PATH_MAX_SIZE];
+    sprintf(seal_path, "%s/%s", SEALS_PATH, rcv_msg.pk);
+    FILE* seal_file = fopen(seal_path, "rb");
+    size_t sealed_size = sizeof(sgx_sealed_data_t) + sizeof(uint8_t)*16;
+    uint8_t* sealed_data = (uint8_t*)malloc(sealed_size);
+    if (seal_file == NULL) {
+        printf("\nWarning: Failed to open the seal file \"%s\".\n", seal_path);
+        fclose(seal_file);
+        free(sealed_data);
+        return 1;
+    }
+    else {
+        fread(sealed_data,1,sealed_size,seal_file);
+        fclose(seal_file);
+    }
+
+    // Count number of lines in file
+    uint32_t data_count = count_entries();
+
+    // Create arrays for datas and datas sizes 
+    uint8_t** datas = (uint8_t**)malloc(data_count*sizeof(uint8_t*)); 
+    uint32_t* datas_sizes = (uint32_t*)malloc(data_count*sizeof(uint32_t)); 
+
+    // Read all data in file
+    char* data = (char *)malloc(MAX_DATA_SIZE*sizeof(char));
+    memset(data, 0, MAX_DATA_SIZE*sizeof(char));
+    uint32_t filtered_data_count = 0;
+    uint32_t offset = 0;
+    for(uint32_t index=0; index < data_count; index++) {
+        file_read(offset, data);
+        stored_data_t stored_data = get_stored_parameters(data);
+        memset(data, 0, MAX_DATA_SIZE*sizeof(char));
+        offset += 5+7+3+9+5+5+10+stored_data.encrypted_size*6+1;
+
+        // Filter energy consumption data from this client
+        datas[filtered_data_count] = (uint8_t*)malloc(stored_data.encrypted_size*sizeof(uint8_t*));
+        if(strcmp(stored_data.type, "123456") == 0 && strcmp(rcv_msg.pk, stored_data.pk) == 0) {
+            memcpy(datas[filtered_data_count], stored_data.encrypted, stored_data.encrypted_size);
+            datas_sizes[filtered_data_count] = stored_data.encrypted_size;
+            filtered_data_count++;
+        }
+    }
+    free(data);
+
+    // Call function to aggregate 
+    // pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281
+    uint8_t result[RESULT_MAX_SIZE];
+    sgx_status_t sgx_status;
+    sgx_status_t ecall_status;
+    {
+    Timer t("sum_encrypted_data_s");
+    sgx_status = sum_encrypted_data_s(global_eid, &ecall_status,
+            (sgx_sealed_data_t*)sealed_data, 
+            datas, 
+            datas_sizes, 
+            filtered_data_count,
+            MAX_DATA_SIZE,
+            result);
+    }
+    free(sealed_data);
 
 }
 
@@ -184,11 +254,8 @@ void aggregation(iot_message_t rcv_msg, sgx_enclave_id_t global_eid, bool secure
         //file_write (rcv_msg, processed_data, real_size);
     }
     else {
-        printf("Not implemented!\n");
-        /*
         uint8_t processed_data [RESULT_MAX_SIZE];
-        uint32_t real_size = no_processing_s(rcv_msg, global_eid, processed_data);
-        file_write (rcv_msg, processed_data, real_size);
-        */
+        uint32_t real_size = aggregation_s(rcv_msg, processed_data, global_eid);
+        //file_write (rcv_msg, processed_data, real_size);
     }
 }

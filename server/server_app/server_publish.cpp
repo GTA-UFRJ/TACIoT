@@ -45,6 +45,10 @@ void ocall_print_secret(uint8_t* secret, uint32_t secret_size)
     printf("\n");
 }
 
+void ocall_print_aggregated(unsigned long number) {
+    printf("Aggregated: %lu\n", number);
+}
+
 iot_message_t parse_request(uint32_t size, char* msg)
 {
     Timer t("parse_request");

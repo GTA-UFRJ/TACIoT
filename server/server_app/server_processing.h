@@ -33,5 +33,5 @@ uint32_t no_processing_s(iot_message_t, sgx_enclave_id_t, uint8_t*);
 void no_processing(iot_message_t, sgx_enclave_id_t, bool);
 
 uint32_t aggregation_i(iot_message_t, uint8_t*);
-uint32_t aggregation_s(iot_message_t, uint8_t*);
+uint32_t aggregation_s(iot_message_t, uint8_t*, sgx_enclave_id_t);
 void aggregation(iot_message_t, sgx_enclave_id_t, bool);

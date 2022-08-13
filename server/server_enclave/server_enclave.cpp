@@ -314,3 +314,81 @@ sgx_status_t retrieve_data(
     //ocall_print_secret(&result[0], encrypted_data_size);
     return ret;
 }
+
+
+// Process data before publishing
+sgx_status_t sum_encrypted_data_s( 
+    sgx_sealed_data_t* sealed_key,
+    uint8_t** encrypted_data_array,
+    uint32_t* encrypted_data_size_array,
+    uint32_t data_count,
+    int max_data_size,
+    uint8_t* encrypted_result)
+{
+    // AES128(pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281)
+    // Unseal key
+    sgx_status_t ret = SGX_SUCCESS;
+    uint8_t key[16] = {0}; 
+    uint32_t key_size = (uint32_t)(16*sizeof(uint8_t));
+    ret = sgx_unseal_data(sealed_key, NULL, NULL, &key[0], &key_size);
+    sgx_aes_gcm_128bit_key_t my_key;
+    memcpy(my_key, key, (size_t)key_size);
+    //ocall_print_secret(&key[0], 16);
+
+    unsigned long total = 0;
+    uint8_t* client_data = (uint8_t*)malloc(max_data_size*sizeof(uint8_t));
+    memset(client_data,0,max_data_size*sizeof(uint8_t));
+    char payload[4];
+    for (uint32_t index = 0; index < data_count; index++) {
+
+        // Encrypted data:      | MAC | IV | AES128(data)
+        // Buffer size:           16    12   size(data)
+
+        // MAC reference:         &data       :   &data+16
+        // IV reference:          &data+16    :   &data+16+12
+        // AES128(data) ref:      &data+12+16 : 
+
+        // Decrypt data using key
+        ret = sgx_rijndael128GCM_decrypt(&my_key,
+                                        encrypted_data_array[index] + 16 + 12,
+                                        encrypted_data_size_array[index] - 16 - 12,
+                                        client_data,
+                                        encrypted_data_array[index] + 16,
+                                        12,
+                                        NULL,
+                                        0,
+                                        (const sgx_aes_gcm_128bit_tag_t*)
+                                        (encrypted_data_array[index]));
+        //ocall_print_secret(&decMessage[0], dec_msg_len);
+
+        memcpy(payload, client_data+32, 3);
+        payload[3] = '\0';
+
+        total += strtoul(payload, NULL, 10);
+        memset(client_data,0,max_data_size*sizeof(uint8_t));
+    }
+    free(client_data);
+
+    //ocall_print_aggregated(total);
+
+    /*
+    
+    // Encrypt data using key
+    *processed_result_size = (uint32_t)(16 + 12 + sizeof(uint8_t)*(dec_msg_len));
+    uint8_t aes_gcm_iv[12] = {0};
+    memcpy(processed_result+16, aes_gcm_iv, 12);
+    ret = sgx_rijndael128GCM_encrypt(&my_key,
+                                    proc,
+                                    dec_msg_len,
+                                    processed_result + 16 + 12,
+                                    &aes_gcm_iv[0],
+                                    12,
+                                    NULL,
+                                    0,
+                                    (sgx_aes_gcm_128bit_tag_t*)
+                                    (processed_result));
+    //ocall_print_secret(&processed_result[0], *processed_result_size);
+    processed_result[*processed_result_size] = 0;
+    */
+    return ret;
+}
