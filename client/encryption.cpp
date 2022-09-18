@@ -30,7 +30,7 @@ sample_status_t encrypt_data (
 
     // Generate nonce (initialization vector IV)
     uint8_t iv[12];
-    srand(time(NULL));
+    //srand(time(NULL));
     for(int i=0;i<12;i++)
     {
         //iv[i] = static_cast<uint8_t>(rand()%10) + 48;
@@ -69,7 +69,7 @@ sample_status_t decrypt_data
     // IV reference:          &data+16    :   &data+16+12
     // AES128(data) ref:      &data+12+16 : 
     sample_status_t ret;
-    *client_data_size = encMessageLen - SAMPLE_AESGCM_MAC_SIZE - SAMPLE_AESGCM_IV_SIZE;
+    *client_data_size = (uint32_t)encMessageLen - SAMPLE_AESGCM_MAC_SIZE - SAMPLE_AESGCM_IV_SIZE;
     const sample_aes_gcm_128bit_key_t (*key)[16];
     key = &sha_key;
 

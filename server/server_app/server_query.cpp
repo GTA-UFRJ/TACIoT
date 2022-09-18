@@ -116,10 +116,10 @@ uint8_t enclave_get_response(stored_data_t stored, sgx_enclave_id_t global_eid, 
 
     // Call enclave to unseal keys, decrypt with the publisher key and encrypt with querier key
     sgx_status_t ecall_status;
-    sgx_status_t sgx_status;
-    uint32_t real_size;
+    //sgx_status_t sgx_status;
+    //uint32_t real_size;
     uint8_t access_allowed = 0;
-    sgx_status = retrieve_data(global_eid, &ecall_status,
+    retrieve_data(global_eid, &ecall_status,
         (sgx_sealed_data_t*)sealed_querier_key,
         (sgx_sealed_data_t*)sealed_publisher_key,
         stored.encrypted,

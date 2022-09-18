@@ -8,16 +8,15 @@
 #include "server_disk_manager.h"
 #include "sample_libcrypto.h"
 
-const sample_aes_gcm_128bit_key_t formatted_key[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+//const sample_aes_gcm_128bit_key_t formatted_key[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 unsigned long sum_encrypted_data_i(uint8_t* key, uint8_t** data_array, uint32_t* size_array, uint32_t data_count) {
 
     Timer t("sum_encrypted_data_i");
-    /*
+    
     const sample_aes_gcm_128bit_key_t formatted_key[16] = 
     {key[0], key[1], key[2], key[3], key[4], key[5], key[6], key[7],
      key[8], key[9], key[10],key[11],key[12],key[13],key[14],key[15]};
-    */
     const sample_aes_gcm_128bit_key_t (*p_formatted_key)[16];
     p_formatted_key = &formatted_key;
 
@@ -174,7 +173,7 @@ uint32_t aggregation_i(iot_message_t rcv_msg, uint8_t* processed_data) {
 
     // Write data in file
     //file_write(rcv_msg, encrypted_data, encrypted_data_size);
-
+    return 0;
 }
 
 uint32_t aggregation_s(iot_message_t rcv_msg, uint8_t* processed_data, sgx_enclave_id_t global_eid) { 
@@ -232,7 +231,7 @@ uint32_t aggregation_s(iot_message_t rcv_msg, uint8_t* processed_data, sgx_encla
     sgx_status_t sgx_status;
     sgx_status_t ecall_status;
     {
-    Timer t("sum_encrypted_data_s");
+    Timer t2("sum_encrypted_data_s");
     sgx_status = sum_encrypted_data_s(global_eid, &ecall_status,
             (sgx_sealed_data_t*)sealed_data, 
             datas, 
@@ -242,6 +241,8 @@ uint32_t aggregation_s(iot_message_t rcv_msg, uint8_t* processed_data, sgx_encla
             result);
     }
     free(sealed_data);
+
+    return 0;
 
 }
 

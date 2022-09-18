@@ -20,7 +20,7 @@
 uint32_t parse_server_response(char* msg, uint8_t* encrypted)
 {
     // size|0x%02x|data|
-    uint32_t index;
+    //uint32_t index;
     uint32_t size;
     char auxiliar[3];
     char* token = strtok_r(msg, "|", &msg);
@@ -85,7 +85,7 @@ int client_query(uint32_t data_index, uint32_t* data_size, uint8_t* data)
     size_t encMessageLen = send_query_message(data_index, encMessage);
 
     // Decrypt received data
-    sample_status_t ret = decrypt_data (encMessageLen, encMessage, data, data_size);
+    decrypt_data (encMessageLen, encMessage, data, data_size);
     free(encMessage);
 
     return 0;

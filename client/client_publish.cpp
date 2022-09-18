@@ -75,13 +75,13 @@ int client_publish(uint8_t* client_data, uint32_t client_data_size, char* data_t
 {
     // Data and size must be parametes passed by access point software
     // pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281
-    sample_status_t ret;
+    //sample_status_t ret;
     size_t encMessageLen;
     uint8_t* encMessage = (uint8_t *) malloc(MAX_ENC_DATA_SIZE*sizeof(uint8_t));;
-    ret = encrypt_data (&encMessageLen, encMessage, client_data, client_data_size);
+    encrypt_data (&encMessageLen, encMessage, client_data, client_data_size);
 
     // Send data for publishing
-    send_data_for_publishing(encMessage, encMessageLen, data_type, data_type_size);
+    send_data_for_publishing(encMessage, (uint32_t)encMessageLen, data_type, data_type_size);
     free(encMessage);
     
     return 0;

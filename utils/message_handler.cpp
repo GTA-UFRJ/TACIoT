@@ -117,7 +117,7 @@ int ra_network_send_receive(const char *client_url,
 
     // Try to comunicate with client 10 times
     int tries = 0;
-    int i;
+    unsigned int i;
     char* type;
     char* status;
     char status0[3];

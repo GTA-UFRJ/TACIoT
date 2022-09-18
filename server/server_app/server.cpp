@@ -37,8 +37,8 @@ int start_attestation_client ()
             std::cout << res->body << std::endl;
         }
     } else {
-        httplib::Error err = httplib::Error::Success;
-        err = res.error();
+        //httplib::Error err = httplib::Error::Success;
+        res.error();
         printf("%d\n", (int)res.error());
     }
 
@@ -84,6 +84,7 @@ int main (int argc, char** argv)
         if(server_publish(secure, req, res, global_eid))
             return -1;
         concurrentRequestsCount--;
+        return 0;
     });
 
     svr.Get(R"(/query/size=(\d+)/(.*))", [&](const Request& req, Response& res) {
@@ -94,6 +95,7 @@ int main (int argc, char** argv)
         if(server_query(secure, req, res, global_eid))
             return -1;
         concurrentRequestsCount--;
+        return 0;
     });
 
     svr.Get(R"(/stop_test)", [&](const Request& req, Response& res) {
