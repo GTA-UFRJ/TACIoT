@@ -7,6 +7,9 @@
 #include <stdlib.h>
 #include <iostream>
 #include <string.h>
+#include <string>
+#include <stdexcept>
+#include <limits>
 #include <stdio.h>
 #include <chrono>
 #include <thread>
@@ -21,7 +24,7 @@
 #include "utils_sgx.h"
 #include "utils.h"
 #include "server_enclave_u.h"
-#include "ecp.h"                // sample_ec_key_128bit_t
+//#include "ecp.h"                // sample_ec_key_128bit_t
 #include HTTPLIB_PATH
 
 #include "sgx_urts.h"
@@ -44,98 +47,161 @@ void ocall_print_secret(uint8_t* secret, uint32_t secret_size)
     }
     printf("\n");
 }
-
+ 
 void ocall_print_aggregated(unsigned long number) {
     printf("Aggregated: %lu\n", number);
 }
 
-iot_message_t parse_request(uint32_t size, char* msg)
+// pk|72d41281|type|123456|size|62|encrypted|...
+int parse_request(uint32_t size, char* msg, iot_message_t* p_rcv_msg)
 {
     Timer t("parse_request");
-    iot_message_t rcv_msg;
+    
+    if(DEBUG) printf("Parsing message fields\n");
+    
     char* token = strtok_r(msg, "|", &msg);
     int i = 0;
     char auxiliar[3];
+    char* invalid_char;
     while (token != NULL)
     {
         i++;
         token = strtok_r(NULL, "|", &msg);
+
         // Get client key
-        if (i == 1)
-        {
-            memcpy(rcv_msg.pk, token, 8);
-            rcv_msg.pk[8] = '\0';
+        if (i == 1){
+            memcpy(p_rcv_msg->pk, token, 8);
+            p_rcv_msg->pk[8] = '\0';
+
+            if(DEBUG) printf("pk: %s\n", p_rcv_msg->pk);
         }
+
         // Get data type
-        if (i == 3)
-        {
-            memcpy(rcv_msg.type, token, 6);
-            rcv_msg.type[6] = '\0';
+        if (i == 3) {
+            memcpy(p_rcv_msg->type, token, 6);
+            p_rcv_msg->type[6] = '\0';
+
+            if(DEBUG) printf("type: %s\n", p_rcv_msg->type);
         }
+
         // Get encrypted message size
-        if (i == 5)
-        {
-            rcv_msg.encrypted_size = (uint32_t)strtoul(token,NULL,16);
+        if (i == 5) {
+            p_rcv_msg->encrypted_size = (uint32_t)strtoul(token, &invalid_char, 16);
+
+            if(*invalid_char != 0) {
+                printf("\nInvalid encrypted size message format.\n");
+                return -1;
+            }
+
+            if(DEBUG) printf("encrypted_size: %u\n", p_rcv_msg->encrypted_size);
         }
+
         // Get encrypted message
-        if (i == 7)
-        {
-            rcv_msg.encrypted = (uint8_t*)malloc((rcv_msg.encrypted_size+1) * sizeof(uint8_t));
-            if (rcv_msg.encrypted == NULL)
-            {
-                printf("Allocation error\n");
+        if (i == 7) {
+
+            if(DEBUG) printf("encrypted: ");
+
+            p_rcv_msg->encrypted = (uint8_t*)malloc((p_rcv_msg->encrypted_size+1) * sizeof(uint8_t));
+            if (p_rcv_msg->encrypted == NULL) {
+                printf("\nAllocation error for the encrypted publciation message.\n");
+                return -1;
             }
-            for (uint32_t j=0; j<rcv_msg.encrypted_size; j++)
-            {
-                auxiliar[0] = token[6*j+2];
-                auxiliar[1] = token[6*j+3];
+
+            for (uint32_t j=0; j<p_rcv_msg->encrypted_size; j++){
+                auxiliar[0] = token[3*j];
+                auxiliar[1] = token[3*j+1];
                 auxiliar[2] = '\0';
-                rcv_msg.encrypted[j] = (uint8_t)strtoul(auxiliar, NULL, 16);
+                p_rcv_msg->encrypted[j] = (uint8_t)strtoul(auxiliar, &invalid_char, 16);
+
+                if(auxiliar != 0 && *invalid_char != 0) {
+                    printf("\nInvalid encrypted publciation message format.\n");
+                    free(p_rcv_msg->encrypted);
+                    return -1;
+                }
+
+                if(DEBUG) printf("%02x,", (unsigned)p_rcv_msg->encrypted[j]);
             }
-            rcv_msg.encrypted[rcv_msg.encrypted_size] = 0;
+            p_rcv_msg->encrypted[p_rcv_msg->encrypted_size] = '\0';
         }
     }
-    return rcv_msg;
+
+    return 0;
 }
 
-uint32_t get_publish_message(const Request& req, char* snd_msg)
+int get_publish_message(const Request& req, char* snd_msg, uint32_t* p_size)
 {
     Timer t("get_publish_message");
-    char c_size[4];
-    uint32_t size;
-    std::string a_size = req.matches[1].str();
-    strcpy(c_size, a_size.c_str());
-    size = (uint32_t)strtoul(c_size, NULL, 10);
 
-    std::string a_snd_msg = req.matches[2].str();
-    strncpy(snd_msg, a_snd_msg.c_str(), (size_t)(size-1));
-    snd_msg[size] = '\0';
+    std::string size_field = req.matches[1].str();
 
-    return size;
+    try {
+        *p_size = (uint32_t)std::stoul(size_field);
+    }
+    catch (std::invalid_argument& exception) {
+        printf("\nFailed to detect HTTP message size\n");
+        return -1;
+    }
+
+    if(*p_size > URL_MAX_SIZE) {
+        printf("\nHTTP message bigger than the maximum size\n");
+        return -1;
+    }
+
+    if(DEBUG) printf("Size: %u\n", *p_size);
+
+    std::string message_field = req.matches[2].str();
+
+    strncpy(snd_msg, message_field.c_str(), (size_t)(*p_size-1));
+    snd_msg[*p_size] = '\0';
+    
+    if(DEBUG) printf("Message: %s\n\n", snd_msg);
+
+    return 0;
 }
 
 int server_publish(bool secure, const Request& req, Response& res, sgx_enclave_id_t global_eid)
 {
     Timer t("server_publish");
+
     // Get message sent in HTTP header
-    uint32_t size;
     char* snd_msg = (char*)malloc(URL_MAX_SIZE*sizeof(char));;
-    size = get_publish_message(req, snd_msg);
-    //printf("Request size = %u\nRequest msg = %s\n", size, snd_msg);
+
+    uint32_t size;
+    if(get_publish_message(req, snd_msg, &size)) {
+        free(snd_msg);
+        return -1;
+    }
  
     // Server receives and separate parameters according to Ultrlight protocol
-    // type|123456|size|0x35|encrypted|AES128(pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281)    
+    // pk|72d41281|type|123456|size|62|encrypted|... 
     iot_message_t rcv_msg;
-    rcv_msg = parse_request(size, snd_msg);
+    if(parse_request(size, snd_msg, &rcv_msg))
+        return -1;
     free(snd_msg);
 
     // Identify data type and call function to process it
-    if(!strcmp(rcv_msg.type, "555555"))
-        aggregation(rcv_msg, global_eid, secure);
-    else
-        no_processing(rcv_msg, global_eid, secure);
+    if(!strcmp(rcv_msg.type, "555555")){
+
+        if(DEBUG) printf("\n\nAggregating\n");
+
+        if(aggregation(rcv_msg, global_eid, secure)){
+            free(rcv_msg.encrypted);
+            return -1;
+        }
+    }
+    else {
+
+        if(DEBUG) printf("\nPublishing without processing\n");
+
+        if(no_processing(rcv_msg, global_eid, secure)){
+            free(rcv_msg.encrypted); 
+            return -1;
+        } 
+    }
 
     free(rcv_msg.encrypted);
+
+    if(DEBUG) printf("Sending ack\n");
     res.set_content("ack", "text/plain");
     return 0; 
 }

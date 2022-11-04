@@ -38,15 +38,6 @@ make LATENCY=0
 Changing the latency value allow us to any non negative integer value allows you to add
 some networking latency in miliseconds for each sent or received message from server.
 
-To test the register application, first, run:
-```
-./Client r
-```
-The client will offer an attestation service for the server. In other configured
-machine/terminal, run:
-```
-./Server r
-```
 To test the server data publishing and quering service, run:
 ```
 ./Server s
@@ -54,11 +45,13 @@ To test the server data publishing and quering service, run:
 You can use *s* for a secure server (using SGX enclaves) or *i* for an insecure server.
 Then, in other configured machine/environment, run:
 ```
-./Client p 
+./client publish 123456 250 72d41281
 ```
+This command publishes a data of type 123456, payload 250 and allow permission for client with ID 72d4128.
+
 For evaluating throughput and latency, you can enter wrk2 repo and run:
 ```
-./wrk -t2 -c10 -d30s -R200 "http://localhost:7778/publish/size=631/pk|72d41281|type|123456|size|62|encrypted|0xdd--0xb1--0xb6--0xb8--0x22--0xd3--0x9a--0x76--0x1c--0xb6--0xc0--0x30--0x6a--0xe9--0x21--0x5a--0x00--0x00--0x00--0x00--0x00--0x00--0x00--0x00--0x00--0x00--0x00--0x00--0x73--0xe3--0xa6--0xf9--0x52--0xd2--0x97--0xa3--0xc1--0x10--0xf3--0xc5--0x05--0xcb--0x8e--0x1d--0x8b--0xe2--0xcf--0xcc--0x16--0x26--0x2c--0x4f--0x83--0x94--0xe4--0x9a--0xe0--0xee--0xb3--0x9c--0x50--0x63--0x68--0x4d--0x21--0x12--0xf0--0xa6--0x12--0xbc--0x86--0x9d--0xe1--0xa3--0x9b--0xd9--0xf9--0x31--0xd2--0x7c--0x63--0xe3--0x40--0x0e--0x08--0x17--0xd3--0xd2--0xf8--0xbf--0xbf--0xc0--0xee--0xea--0x4c--0xb7--0x90--0xdf--"
+../wrk2/wrk -t1 -c1 -d30s -R1 "http://localhost:7778/publish/size=631/pk|72d41281|type|555555|size|62|encrypted|dd-b1-b6-b8-22-d3-9a-76-1c-b6-c0-30-6a-e9-21-5a-00-00-00-00-00-00-00-00-00-00-00-00-73-e3-a6-f9-52-d2-97-a3-c1-10-f3-c5-05-cb-8e-1d-8b-e2-cf-cc-16-26-2c-4f-83-94-e4-9a-e0-ee-b3-9c-50-63-68-4d-21-12-f0-a6-12-bc-86-9d-e1-a3-9b-d9-f9-31-d2-7c-63-e3-40-0e-08-17-d3-d2-f8-bf-bf-c0-ee-ea-4c-b7-90-df-"
 ```
 ```
 ./wrk -t2 -c10 -d30s -R200 "http://localhost:7778/query/size=24/pk|72d41281|index|000000"

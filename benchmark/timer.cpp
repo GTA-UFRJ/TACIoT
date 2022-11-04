@@ -51,9 +51,10 @@ void Timer::Stop() {
 }
 
 void Timer::print_times() {
+    std::cout << std::endl;
     for(unsigned count=0; count<labels.size(); count++) {
         std::cout << labels[count] << "(calls=" << labels_occurrencies[count] <<  "): "
-        << compute_mean(times[count]) << " +- " << compute_conf_int(times[count]) << "us\n";
+        << compute_mean(times[count]) << " +- " << compute_conf_int(times[count]) << "us" << std::endl;
         /*
         std::cout << labels[count] << "(calls=" << labels_occurrencies[count] <<  "): "
         << times[count]/labels_occurrencies[count] << "us (" 

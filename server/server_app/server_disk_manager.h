@@ -18,13 +18,19 @@
 #include "utils_sgx.h"
 #include "utils.h"
 
-void file_write(iot_message_t, uint8_t*, uint32_t);
+int file_write(iot_message_t, uint8_t*, uint32_t);
 
 // Separate parameters of stored message
-stored_data_t get_stored_parameters(char* );
+int get_stored_parameters(char*, stored_data_t*);
 
 // Locate data in file and read it 
-void file_read(uint32_t , char* );
+int file_read(uint32_t , char* );
 
 // Count number of lines in file
 uint32_t count_entries();
+
+// Verify if file alredy exists
+bool verify_file_existance(char*);
+
+// Write client key to file
+int write_key(char*, uint8_t*, uint32_t, char*);

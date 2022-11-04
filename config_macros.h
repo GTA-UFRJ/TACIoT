@@ -9,6 +9,10 @@
  *
  */
 
+#ifndef DEBUG 
+#define DEBUG 1
+#endif
+
 #ifndef TOKENS_PATH
 #define TOKENS_PATH "/home/guiaraujo/TACIoT/server/tokens"
 #endif
@@ -33,12 +37,8 @@
 #define SERVER_URL "0.0.0.0"
 #endif
 
-#ifndef COMUNICATION_PORT
-#define COMUNICATION_PORT 7777
-#endif
-
-#ifndef COMUNICATION_PORT_2
-#define COMUNICATION_PORT_2 7778
+#ifndef SERVER_PORT
+#define SERVER_PORT 7778
 #endif
 
 #ifndef HTTPLIB_PATH
@@ -50,7 +50,7 @@
 #endif
 
 #ifndef LATENCY_MS
-#define LATENCY_MS 100
+#define LATENCY_MS 0
 #endif
 
 #ifndef CLIENT_GXGYPK
@@ -82,7 +82,7 @@
 #endif
 
 #ifndef SEALED_SIZE
-#define SEALED_SIZE 4096
+#define SEALED_SIZE 8192
 #endif
 
 #ifndef RESULT_MAX_SIZE
@@ -107,4 +107,36 @@
 
 #ifndef MAX_ENC_DATA_SIZE
 #define MAX_ENC_DATA_SIZE 1024
+#endif
+
+#ifndef MAX_AGGREGATION_TOTAL_SIZE
+#define MAX_AGGREGATION_TOTAL_SIZE 20
+#endif
+
+#ifndef PK_SAMPLE
+#define PK_SAMPLE "72d41281"
+#endif
+
+#ifndef GENERIC_MEASURE_PAYLOAD_SAMPLE
+#define GENERIC_MEASURE_PAYLOAD_SAMPLE "250"
+#endif
+
+#ifndef GENERIC_MEASURE_PAYLOAD_SIZE_SAMPLE
+#define GENERIC_MEASURE_PAYLOAD_SIZE_SAMPLE 3
+#endif
+
+#ifndef GENERIC_MEASURE_TYPE_SAMPLE
+#define GENERIC_MEASURE_TYPE_SAMPLE "123456"
+#endif
+
+#ifndef AGGREGATE_GMT_TYPE_SAMPLE
+#define AGGREGATE_GMT_TYPE_SAMPLE "555555"
+#endif
+
+#ifndef GENERIC_MEASURE_PERMISSION_1_SAMPLE
+#define GENERIC_MEASURE_PERMISSION_1_SAMPLE "72d41281"
+#endif
+
+#ifndef AGGREGATE_GMT_PERMISSION_1_SAMPLE
+#define AGGREGATE_GMT_PERMISSION_1_SAMPLE "72d41281"
 #endif

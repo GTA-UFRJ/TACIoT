@@ -14,75 +14,89 @@
 #include "timer.h"
 
 #include "client_publish.h"
-#include "encryption.h"
 
 #include "sample_libcrypto.h"   
-#include "config_macros.h"      
-#include "ecp.h"              
+#include "config_macros.h"        
 #include HTTPLIB_PATH
+#include "utils/encryption.h"
 
-void stop_signal() {
-    char http_message[URL_MAX_SIZE];
-    httplib::Error err = httplib::Error::Success;
-    sprintf(http_message, "/stop_test");
-
-    httplib::Client cli(SERVER_URL, COMUNICATION_PORT_2);
-    if (auto res = cli.Get(http_message)) {
-    } else {
-        err = res.error();
-        printf("Failed: error %d\n", (int)err);
-    }
-}
-
-void send_data_for_publishing(uint8_t* encMessage, uint32_t encMessageLen, char* data_type, uint32_t data_type_size)
+int send_data_for_publication(char* pk, char* type, uint8_t* enc_data, uint32_t enc_data_size)
 {
-    size_t header_size = 3+9+5+data_type_size+6+3+10;
-    size_t snd_msg_size = (header_size+1+6*encMessageLen)*sizeof(char);
+    // Build publication message
+    // "http://localhost:7778/publish/size=631/pk|72d41281|type|555555|size|62|encrypted|dd-b1-b6-b8-22-d3-9a-76-..."
+    size_t header_size = 3+9+5+7+5+3+10;
+    size_t snd_msg_size = (header_size+1+3*enc_data_size)*sizeof(char);
+
     char* snd_msg = (char*)malloc(snd_msg_size);
-    sprintf(snd_msg, "pk|%s|type|%s|size|%02x|encrypted|", CLIENT_ID, data_type, (unsigned int)encMessageLen);
-    char auxiliar[7];
-    for (int i=0; i<int(encMessageLen); i++)
-    {
-        sprintf(auxiliar, "0x%02x--",encMessage[i]);
-        memcpy(&snd_msg[header_size+6*i], auxiliar, 6);
+    sprintf(snd_msg, "pk|%s|type|%s|size|%02x|encrypted|", pk, type, (unsigned int)enc_data_size);
+
+    char auxiliar[4];
+    for (uint32_t i=0; i<enc_data_size; i++) {
+        sprintf(auxiliar, "%02x-",enc_data[i]);
+        memcpy(&snd_msg[header_size+3*i], auxiliar, 3);
     }
     snd_msg[snd_msg_size] = '\0';
 
+    // Build HTTP publication message
     char http_message[URL_MAX_SIZE];
-    httplib::Error err = httplib::Error::Success;
     sprintf(http_message, "/publish/size=%d/%s", (int)snd_msg_size, snd_msg);
-    printf("%s\n",http_message);
 
-    httplib::Client cli(SERVER_URL, COMUNICATION_PORT_2);
+    // Send HTTP publication message
+    httplib::Error err = httplib::Error::Success;
+    httplib::Client cli(SERVER_URL, SERVER_PORT);
     std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
+
     {
         Timer t("communication");
+        printf("Sent %s\n",http_message);
         if (auto res = cli.Get(http_message)) {
-            //printf("Client sent %s to server\n", http_message);
-            if (res->status == 200) {
-                //fprintf(stdout,"\n%s\n",res->body.c_str());
-                //printf("Success: received 200 from server\n");
+            
+            if (res->status != 200) {
+                printf("Server responded with error code: %d\n", (int)res->status);
+                free(snd_msg);
+                return -1;
             }
+            printf("Received: ack\n");
+
         } else {
             err = res.error();
-            printf("Failed: error %d\n", (int)err);
+            printf("Failed HTTP message: error %d\n", (int)err);
+            free(snd_msg);
+            return -1;
         }
     }
     free(snd_msg);
+
+    return 0;
 }
 
-int client_publish(uint8_t* client_data, uint32_t client_data_size, char* data_type, uint32_t data_type_size)
+int client_publish(uint8_t* key, client_data_t data)
 {
-    // Data and size must be parametes passed by access point software
-    // pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281
-    //sample_status_t ret;
-    size_t encMessageLen;
-    uint8_t* encMessage = (uint8_t *) malloc(MAX_ENC_DATA_SIZE*sizeof(uint8_t));;
-    encrypt_data (&encMessageLen, encMessage, client_data, client_data_size);
+    // Mount text with client data
+    // pk|72d41281|type|123456|payload|250|permission1|72d41281
+    uint32_t formatted_data_size = 3+9+5+7+8+(uint32_t)strlen(data.payload)+13+8; // 56
+    char* formatted_data = (char*)malloc(sizeof(char) * (formatted_data_size+1));
+    sprintf(formatted_data,"pk|%s|type|%s|payload|%s|permission1|%s", 
+            data.pk, data.type, data.payload, data.permissions_list[0]);
 
-    // Send data for publishing
-    send_data_for_publishing(encMessage, (uint32_t)encMessageLen, data_type, data_type_size);
-    free(encMessage);
+    uint32_t enc_data_size = MAX_ENC_DATA_SIZE;
+    uint8_t* enc_data = (uint8_t *) malloc(enc_data_size*sizeof(uint8_t));
+
+    sample_status_t ret = encrypt_data(key, enc_data, &enc_data_size, (uint8_t*)formatted_data, formatted_data_size);
+    if(ret != SAMPLE_SUCCESS) {
+        printf("\nError encrypting client data. Error code: %d\n", (int)ret);
+        free(formatted_data);
+        free(enc_data);
+        return -1;
+    }
+    free(formatted_data);
+
+    // Send data for publication
+    if(send_data_for_publication(data.pk, data.type, enc_data, enc_data_size) != 0) {
+        free(enc_data);
+        return -1;
+    }
+    free(enc_data);
     
     return 0;
 }

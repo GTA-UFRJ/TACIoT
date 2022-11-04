@@ -47,148 +47,52 @@
 #include "sgx_trts.h"
 //#include "server_processing.h"
 #include <string.h>
+#include <string>
+#include <stdlib.h>
 
 uint8_t g_secret[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
                         0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
-
-// Generate context for creating Ga key for Diffie-Hellman Key Exchange
-sgx_status_t enclave_init_ra(
-    int b_pse,
-    sgx_ra_context_t *p_context,
-    sgx_ec256_public_t* client_pk)
-{
-    // isv enclave call to trusted key exchange library.
-    sgx_status_t ret;
-    ret = sgx_ra_init(client_pk, b_pse, p_context);
-    return ret;
-}
-
-// End remote attestation discarding key context from memory
-sgx_status_t SGXAPI enclave_ra_close(
-    sgx_ra_context_t context)
-{
-    sgx_status_t ret;
-    ret = sgx_ra_close(context);
-    return ret;
-}
-
-// Verify Message Authentication Code (MAC) for ensuring integrity 
-sgx_status_t verify_att_result_mac(sgx_ra_context_t context,
-                                   uint8_t* p_message,
-                                   size_t message_size,
-                                   uint8_t* p_mac,
-                                   size_t mac_size)
-{
-    sgx_status_t ret;
-    sgx_ec_key_128bit_t mk_key;
-
-    if(mac_size != sizeof(sgx_mac_t))
-    {
-        ret = SGX_ERROR_INVALID_PARAMETER;
-        return ret;
-    }
-    if(message_size > UINT32_MAX)
-    {
-        ret = SGX_ERROR_INVALID_PARAMETER;
-        return ret;
-    }
-
-    do {
-        uint8_t mac[SGX_CMAC_MAC_SIZE] = {0};
-
-        ret = sgx_ra_get_keys(context, SGX_RA_KEY_MK, &mk_key);
-        if(SGX_SUCCESS != ret)
-        {
-            break;
-        }
-        ret = sgx_rijndael128_cmac_msg(&mk_key,
-                                       p_message,
-                                       (uint32_t)message_size,
-                                       &mac);
-        if(SGX_SUCCESS != ret)
-        {
-            break;
-        }
-        if(0 == consttime_memequal(p_mac, mac, sizeof(mac)))
-        {
-            ret = SGX_ERROR_MAC_MISMATCH;
-            break;
-        }
-
-    }
-    while(0);
-
-    return ret;
-}
-
-// Retrieve cryptographic secrec sent in attestition result
-sgx_status_t put_secret_data(
-    sgx_ra_context_t context,
-    uint8_t *p_secret,
-    uint32_t secret_size,
-    uint8_t *p_gcm_mac,
-    sgx_ec256_public_t* client_pk,
-    sgx_sealed_data_t* sealed_data,
-    size_t sealed_size)
-{
-    sgx_status_t ret = SGX_SUCCESS;
-    sgx_ec_key_128bit_t sk_key;
-    do{
-        ret = sgx_ra_get_keys(context, SGX_RA_KEY_SK, &sk_key);
-        if(SGX_SUCCESS != ret)
-        {
-            break;
-        }
-        uint8_t aes_gcm_iv[12] = {0};
-        ret = sgx_rijndael128GCM_decrypt(&sk_key,
-                                        p_secret,
-                                        secret_size,
-                                        &g_secret[0],
-                                        &aes_gcm_iv[0],
-                                        12,
-                                        NULL,
-                                        0,
-                                        (const sgx_aes_gcm_128bit_tag_t *)
-                                        (p_gcm_mac));
-        ocall_print_secret(&g_secret[0], 16);
-    } while(0);
-
-    ret = sgx_seal_data(0, NULL, sizeof(g_secret[0])*16, &g_secret[0], (uint32_t)sealed_size, sealed_data);
-
-    // Sealing testing
-    /*
-    uint8_t plaintext[16] = {0};
-    uint32_t plaintext_size = (uint32_t)(16*sizeof(uint8_t));
-    ret = sgx_unseal_data(sealed_data, NULL, NULL, &plaintext[0], &plaintext_size);
-    ocall_print_secret(&plaintext[0], plaintext_size);
-    */
-
-    return ret;
-}
 
 // Process data before publishing
 sgx_status_t process_data(
     sgx_sealed_data_t* sealed_key,
     uint8_t* encrypted_data,
     uint32_t encrypted_data_size,
-    uint32_t dec_msg_len, 
     uint8_t*  processed_result,
     uint32_t buffer_max_size,
     uint32_t* processed_result_size)
 {
-    // AES128(pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281)
-    // Unseal key
     sgx_status_t ret = SGX_SUCCESS;
+
+    // Unseal keys
     uint8_t key[16] = {0}; 
     uint32_t key_size = (uint32_t)(16*sizeof(uint8_t));
     ret = sgx_unseal_data(sealed_key, NULL, NULL, &key[0], &key_size);
+    /*
+    if(ret != SGX_SUCCESS) {
+        uint8_t error = (uint8_t)ret;
+        ocall_print_secret(&error, 1);
+        return ret;
+    }*/
+
     sgx_aes_gcm_128bit_key_t my_key;
     memcpy(my_key, key, (size_t)key_size);
     //ocall_print_secret(&key[0], 16);
 
-    // Decrypt data using key
+    /* 
+    * Decrypt data using key
+    *
+    * Encrypted data:      | MAC | IV | AES128(data)
+    * Buffer size:           16    12   size(data)
+    *
+    * MAC reference:         &data       :   &data+16
+    * IV reference:          &data+16    :   &data+16+12
+    * AES128(data) ref:      &data+12+16 : 
+    */
+    uint32_t dec_msg_len = encrypted_data_size - 16 - 12;
     uint8_t decMessage [dec_msg_len];
     memset(decMessage, 0, dec_msg_len);
+   
     ret = sgx_rijndael128GCM_decrypt(&my_key,
                                     &encrypted_data[0] + 16 + 12,
                                     dec_msg_len,
@@ -199,18 +103,22 @@ sgx_status_t process_data(
                                     0,
                                     (const sgx_aes_gcm_128bit_tag_t*)
                                     (&encrypted_data[0]));
-    //ocall_print_secret(&decMessage[0], dec_msg_len);
-
-    // Process data
-    uint8_t proc[dec_msg_len];
-    memcpy(proc, decMessage, sizeof(uint8_t)*dec_msg_len);
+   // ocall_print_secret(&decMessage[0], dec_msg_len);
+    if(ret != SGX_SUCCESS) {
+        return ret;
+    }
     
     // Encrypt data using key
     *processed_result_size = (uint32_t)(16 + 12 + sizeof(uint8_t)*(dec_msg_len));
+    if(*processed_result_size > buffer_max_size) {
+        ret = (sgx_status_t)0x5001;
+        return ret;
+    }
+
     uint8_t aes_gcm_iv[12] = {0};
     memcpy(processed_result+16, aes_gcm_iv, 12);
     ret = sgx_rijndael128GCM_encrypt(&my_key,
-                                    proc,
+                                    decMessage,
                                     dec_msg_len,
                                     processed_result + 16 + 12,
                                     &aes_gcm_iv[0],
@@ -220,8 +128,12 @@ sgx_status_t process_data(
                                     (sgx_aes_gcm_128bit_tag_t*)
                                     (processed_result));
     //ocall_print_secret(&processed_result[0], *processed_result_size);
+    if(ret != SGX_SUCCESS) {
+        return ret;
+    }
+
     processed_result[*processed_result_size] = 0;
-    return ret;
+    return SGX_SUCCESS;
 }
 
 sgx_status_t retrieve_data(
@@ -233,26 +145,45 @@ sgx_status_t retrieve_data(
     uint8_t* result,
     uint8_t* accepted)
 {
-    // Unseal keys
-    sgx_status_t ret = SGX_SUCCESS;
-    uint8_t querier_key[16] = {0}; 
-    uint32_t key_size = (uint32_t)(16*sizeof(uint8_t));
-    ret = sgx_unseal_data(sealed_querier_key, NULL, NULL, &querier_key[0], &key_size);
-    sgx_aes_gcm_128bit_key_t my_key;
-    memcpy(my_key, querier_key, (size_t)key_size);
 
-    //ocall_print_secret(&querier_key[0], 16);
+    sgx_status_t ret = SGX_SUCCESS;
+
+    // Unseal keys
+    uint32_t key_size = (uint32_t)(16*sizeof(uint8_t));
+
+    uint8_t querier_key[16] = {0}; 
+    ret = sgx_unseal_data(sealed_querier_key, NULL, NULL, &querier_key[0], &key_size);
+    /*if(ret != SGX_SUCCESS) {
+        uint8_t error = (uint8_t)ret;
+        ocall_print_secret(&error, 1);
+        return ret;
+    }*/
 
     uint8_t publisher_key[16] = {0}; 
     ret = sgx_unseal_data(sealed_publisher_key, NULL, NULL, &publisher_key[0], &key_size);
+    /*if(ret != SGX_SUCCESS) {
+        uint8_t error = (uint8_t)ret;
+        ocall_print_secret(&error, 1);
+        return ret;
+    }*/
+
+    sgx_aes_gcm_128bit_key_t my_key;
+    memcpy(my_key, querier_key, (size_t)key_size);
+    
     sgx_aes_gcm_128bit_key_t original_key;
     memcpy(original_key, publisher_key, (size_t)key_size);
 
-    //ocall_print_secret(&publisher_key[0], 16);
-
-    // Decrypt data received from DB/disk copy
-    //ocall_print_secret(&original_data[0], encrypted_data_size);
-    uint32_t dec_msg_len = encrypted_data_size-12-16;
+    /* 
+    * Decrypt data received from DB/disk copy
+    *
+    * Encrypted data:      | MAC | IV | AES128(data)
+    * Buffer size:           16    12   size(data)
+    *
+    * MAC reference:         &data       :   &data+16
+    * IV reference:          &data+16    :   &data+16+12
+    * AES128(data) ref:      &data+12+16 : 
+    */
+    uint32_t dec_msg_len = encrypted_data_size-12-16; 
     uint8_t decMessage [dec_msg_len];
     memset(decMessage,0,dec_msg_len);;
     ret = sgx_rijndael128GCM_decrypt(&original_key,
@@ -265,35 +196,35 @@ sgx_status_t retrieve_data(
                                     0,
                                     (const sgx_aes_gcm_128bit_tag_t*)
                                     (&original_data[0]));
-
-    //ocall_print_secret(&decMessage[0], dec_msg_len);
+    if(ret != SGX_SUCCESS) {
+        return ret;
+    }
 
     // Get permissions and verify if querier is included
-    /*
-    int i = 0;
-    char auxiliar[3];
-    int permission_count = 0;
-    char code[3];
-    *accepted = 0;
+    // pk|72d41281|type|123456|payload|250|permission1|72d41281
     char* text = (char*)malloc(1+dec_msg_len*sizeof(char));
     memcpy(text, decMessage, dec_msg_len);
     text[dec_msg_len] = '\0';
+    
+    int permission_count = 0;
+    *accepted = 0;
+
+    int i = 0;
     char* token = strtok_r(text, "|", &text);
     while (token != NULL && *accepted == 0)
     {
         i++;
         token = strtok_r(NULL, "|", &text);
-        // Get type     
-        if (i == 7+2*permission_count)
-        {
+ 
+        if (i == 7+2*permission_count) {
             if(!memcmp(token, querier_pk, 8))
                 *accepted = 1;
             permission_count++;
         }
-    }*/
+    }
 
     // Allows automatic access for benchmarking 
-    *accepted = 1; 
+    // *accepted = 1; 
 
     // Encrypt data with querier key
     if (*accepted){
@@ -309,44 +240,98 @@ sgx_status_t retrieve_data(
                                         0,
                                         (sgx_aes_gcm_128bit_tag_t*)
                                         (result));
+        if(ret != SGX_SUCCESS) {
+            return ret;
+        }
+    }
+    else {
+        ret = (sgx_status_t)0x5002;
+        return ret;
     }
     
-    //ocall_print_secret(&result[0], encrypted_data_size);
     return ret;
 }
 
 
 // Process data before publishing
 sgx_status_t sum_encrypted_data_s( 
+    uint8_t* encrypted_aggregation_msg,
+    uint32_t encrypted_aggregation_msg_size,
     sgx_sealed_data_t* sealed_key,
     uint8_t** encrypted_data_array,
     uint32_t* encrypted_data_size_array,
     uint32_t data_count,
-    int max_data_size,
-    uint8_t* encrypted_result)
+    char* publisher_pk,
+    uint32_t max_data_size,
+    uint8_t* encrypted_result,
+    uint32_t* encrypted_result_size)
 {
-    // AES128(pk|72d41281|type|weg_multimeter|payload|250110090|permission1|72d41281)
-    // Unseal key
     sgx_status_t ret = SGX_SUCCESS;
+
+    // Unseal key
     uint8_t key[16] = {0}; 
     uint32_t key_size = (uint32_t)(16*sizeof(uint8_t));
     ret = sgx_unseal_data(sealed_key, NULL, NULL, &key[0], &key_size);
+    /*
+    if(ret != SGX_SUCCESS) {
+        return ret;
+    }
+    */
+
     sgx_aes_gcm_128bit_key_t my_key;
     memcpy(my_key, key, (size_t)key_size);
-    //ocall_print_secret(&key[0], 16);
 
+    uint32_t publisher_data_size = max_data_size*sizeof(uint8_t);
+    uint8_t* publisher_data = (uint8_t*)malloc((size_t)publisher_data_size);
+    
+    // Decrypt publisher data
+    ret = sgx_rijndael128GCM_decrypt(&my_key,
+                                     encrypted_aggregation_msg + 16 + 12,
+                                     encrypted_aggregation_msg_size - 16 - 12,
+                                     publisher_data,
+                                     encrypted_aggregation_msg + 16,
+                                     12,
+                                     NULL,
+                                     0,
+                                     (const sgx_aes_gcm_128bit_tag_t*)
+                                     (encrypted_aggregation_msg));
+    publisher_data_size = encrypted_aggregation_msg_size - 16 - 12;
+    if(ret != SGX_SUCCESS) {
+        return ret;
+    }
+    
+    // Pick publisher access permissions
+    // pk|72d41281|type|weg_multimeter|payload|250|permission1|72d41281
+    char access_permissions [1+publisher_data_size*sizeof(char)];
+    memcpy(access_permissions, publisher_data, publisher_data_size);
+    access_permissions[publisher_data_size] = 0;
+    
+    int i = 0;
+    char* p_access_permissions = &access_permissions[0];
+    char* token = strtok_r(p_access_permissions, "|", &p_access_permissions);
+    while (token != NULL && i<5)
+    {
+        token = strtok_r(NULL, "|", &p_access_permissions);
+        i++;
+    }
+    
+    free(publisher_data);
+    uint32_t client_data_size = max_data_size*sizeof(uint8_t);
+    uint8_t* client_data = (uint8_t*)malloc((size_t)client_data_size);
+
+    // Iterate over data array
     unsigned long total = 0;
-    uint8_t* client_data = (uint8_t*)malloc(max_data_size*sizeof(uint8_t));
     memset(client_data,0,max_data_size*sizeof(uint8_t));
     char payload[4];
     for (uint32_t index = 0; index < data_count; index++) {
 
-        // Encrypted data:      | MAC | IV | AES128(data)
-        // Buffer size:           16    12   size(data)
-
-        // MAC reference:         &data       :   &data+16
-        // IV reference:          &data+16    :   &data+16+12
-        // AES128(data) ref:      &data+12+16 : 
+        /* Encrypted data:      | MAC | IV | AES128(data)
+         * Buffer size:           16    12   size(data)
+         *
+         * MAC reference:         &data       :   &data+16
+         * IV reference:          &data+16    :   &data+16+12
+         * AES128(data) ref:      &data+12+16 : 
+         */
 
         // Decrypt data using key
         ret = sgx_rijndael128GCM_decrypt(&my_key,
@@ -359,36 +344,122 @@ sgx_status_t sum_encrypted_data_s(
                                         0,
                                         (const sgx_aes_gcm_128bit_tag_t*)
                                         (encrypted_data_array[index]));
-        //ocall_print_secret(&decMessage[0], dec_msg_len);
+        if(ret != SGX_SUCCESS) {
+            free(client_data);
+            return ret;
+        }
 
-        memcpy(payload, client_data+32, 3);
-        payload[3] = '\0';
+        // Verify if publisher can access this data
+        // pk|72d41281|type|weg_multimeter|payload|250|permission1|72d41281
+       char auxiliar_client_data [1+encrypted_data_size_array[index]*sizeof(char)];
+       memcpy(auxiliar_client_data, client_data, encrypted_data_size_array[index]);
+       auxiliar_client_data[encrypted_data_size_array[index]] = 0;
 
-        total += strtoul(payload, NULL, 10);
+       unsigned long numeric_payload = 0;
+
+       int permission_count = 0;
+       bool accepted = false;
+        i = 0;
+       char* p_auxiliar_client_data = &auxiliar_client_data[0];
+       token = strtok_r(p_auxiliar_client_data, "|", &p_auxiliar_client_data);
+       while (token != NULL && accepted == false)
+        {
+            i++;
+            token = strtok_r(NULL, "|", &p_auxiliar_client_data);
+            if (i == 7+2*permission_count) {
+                if(!memcmp(token, publisher_pk, 8))
+                    accepted = true;
+                permission_count++;
+            }
+
+            // Save payload in memory
+            if (i == 5) {
+                memcpy(payload, token, 3);
+
+                char* invalid_char;
+                numeric_payload = strtoul(payload, &invalid_char, 10);
+                
+                if(payload != 0 && *invalid_char != 0) {
+                    ret = (sgx_status_t)0x5003;
+                    free(client_data);
+                    return ret;
+                }
+            }
+        }
+        // client_data = pk|72d41281|type|123456|payload|250|permission1|72d41281
+
+        // Update total
+        if(accepted)
+            total += numeric_payload;
+
         memset(client_data,0,max_data_size*sizeof(uint8_t));
     }
     free(client_data);
 
-    //ocall_print_aggregated(total);
+    // Build plaintext aggregation data
+    char* aggregation_data = (char*)malloc(max_data_size);
+    char str[] = "pk|xxxxxxxx|type|555555|payload|";
+    memcpy(&str[3],publisher_pk,8);
+    memcpy(aggregation_data, &str[0], 32);
 
-    /*
-    
+    std::string total_string = std::to_string(total);
+    memcpy(aggregation_data+32, total_string.c_str(), total_string.length());
+    *(aggregation_data+32+total_string.length()) = '|';
+    memcpy(aggregation_data+32+total_string.length()+1, p_access_permissions, strlen(p_access_permissions));
+    size_t aggregation_data_size = strlen(aggregation_data);
+
     // Encrypt data using key
-    *processed_result_size = (uint32_t)(16 + 12 + sizeof(uint8_t)*(dec_msg_len));
+    *encrypted_result_size = (uint32_t)(16 + 12 + aggregation_data_size);
+    if(max_data_size < *encrypted_result_size) {
+        ret = (sgx_status_t)0x5001;
+        return ret;
+    }
+
+    ocall_print_secret((uint8_t*)aggregation_data, aggregation_data_size);
+
     uint8_t aes_gcm_iv[12] = {0};
-    memcpy(processed_result+16, aes_gcm_iv, 12);
+    memcpy(encrypted_result+16, aes_gcm_iv, 12);
     ret = sgx_rijndael128GCM_encrypt(&my_key,
-                                    proc,
-                                    dec_msg_len,
-                                    processed_result + 16 + 12,
+                                    (uint8_t*)aggregation_data,
+                                    (uint32_t)aggregation_data_size,
+                                    encrypted_result + 16 + 12,
                                     &aes_gcm_iv[0],
                                     12,
                                     NULL,
                                     0,
                                     (sgx_aes_gcm_128bit_tag_t*)
-                                    (processed_result));
-    //ocall_print_secret(&processed_result[0], *processed_result_size);
-    processed_result[*processed_result_size] = 0;
-    */
+                                    (encrypted_result));
+    if(ret != SGX_SUCCESS) {
+        free(aggregation_data);
+        return ret;
+    }
+    free(aggregation_data);
+    
+    encrypted_result[*encrypted_result_size] = 0;
+    
     return ret;
+}
+
+sgx_status_t sealing_data(
+    uint8_t* sealed_buffer,
+    uint32_t sealed_buffer_size,
+    uint32_t* real_sealed_size,
+    uint8_t* data,
+    uint32_t data_size)
+{
+    *real_sealed_size = sgx_calc_sealed_data_size(0, data_size);
+    if (*real_sealed_size == UINT32_MAX)
+        return SGX_ERROR_UNEXPECTED;
+    if (*real_sealed_size > sealed_buffer_size)
+        return SGX_ERROR_INVALID_PARAMETER;
+
+    sgx_status_t err = sgx_seal_data(0, NULL, data_size, data, *real_sealed_size, (sgx_sealed_data_t *)sealed_buffer);
+/*
+    uint8_t original[16];
+    uint32_t original_size = 16;
+    ocall_print_secret(data, data_size);
+    err = sgx_unseal_data((sgx_sealed_data_t *)sealed_buffer, NULL, NULL, original, &original_size);
+    ocall_print_secret((uint8_t*)original, original_size);
+*/
+    return err;
 }

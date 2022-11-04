@@ -51,3 +51,10 @@ typedef struct stored_data_t
     uint32_t encrypted_size;
     uint8_t* encrypted;
 } stored_message_t;
+
+// Structure of the message used to register
+typedef struct register_message_t
+{
+    char pk[9];
+    uint8_t ck[16];
+} register_message_t;

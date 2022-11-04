@@ -13,6 +13,7 @@
 #include <string.h>
 #include <chrono>
 #include "sample_libcrypto.h"
+#include "config_macros.h"
 
 errno_t memcpy_s(
     void *dest,

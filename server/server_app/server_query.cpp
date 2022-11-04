@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <string.h>
-#include <stdio.h>
+#include <stdio.h> 
 #include <chrono>
 #include <thread>
 #include "timer.h"
@@ -22,7 +22,7 @@
 #include "utils_sgx.h"
 #include "utils.h"
 #include "server_enclave_u.h"
-#include "ecp.h"                // sample_ec_key_128bit_t
+//#include "ecp.h"                // sample_ec_key_128bit_t
 #include HTTPLIB_PATH
 
 #include "sgx_urts.h"
@@ -34,63 +34,97 @@
 
 using namespace httplib;
 
-uint32_t parse_query(uint32_t size, char* msg, char* pk)
+int parse_query(uint32_t size, char* msg, char* pk, uint32_t* p_disk_index)
 {
     Timer t("parse_query");
-    uint32_t index;
+
+    if(DEBUG) printf("Parsing message fields\n");
+
     char* token = strtok_r(msg, "|", &msg);
     int i = 0;
     while (token != NULL)
     {
         i++;
         token = strtok_r(NULL, "|", &msg);
+
         // Get client key
-        if (i == 1)
-        {
+        if (i == 1) {
             memcpy(pk, token, 8);
             pk[8] = '\0';
+            
+            if(DEBUG) printf("pk: %s\n", pk);
         }
+
         // Get data index
-        if (i == 3)
-            index = (uint32_t)strtoul(token, NULL, 10);
-        
-        //printf("%s\n", token);
+        if (i == 3) {
+            char* invalid_char;
+
+            *p_disk_index = (uint32_t)strtoul(token, &invalid_char, 10);
+
+            if(*invalid_char != 0) {
+                printf("\nInvalid query index message format.\n");
+                return -1;
+            }
+           
+            if(DEBUG) printf("disk_index: %u\n", *p_disk_index);
+        }
     }
-    return index;
+    return 0;
 }
 
-uint32_t get_query_message(const Request& req, char* snd_msg)
+int get_query_message(const Request& req, char* snd_msg, uint32_t* p_size)
 {
     Timer t("get_query_message");
-    char c_size[4];
-    uint32_t size;
-    std::string a_size = req.matches[1].str();
-    strcpy(c_size, a_size.c_str());
-    size = (uint32_t)strtoul(c_size, NULL, 10);
 
-    std::string a_snd_msg = req.matches[2].str();
-    strncpy(snd_msg, a_snd_msg.c_str(), (size_t)(size-1));
-    snd_msg[size] = '\0';
+    std::string size_field = req.matches[1].str();
 
-    //printf("Size=%u, Message=%s\n", (unsigned)size, snd_msg);
+    try {
+        *p_size = (uint32_t)std::stoul(size_field);
+    }
+    catch (std::invalid_argument& exception) {
+        printf("\nFailed to detect HTTP message size\n");
+        return -1;
+    }
 
-    return size;
+    if(*p_size > URL_MAX_SIZE) {
+        printf("\nHTTP message bigger than the maximum size\n");
+        return -1;
+    }
+
+    if(DEBUG) printf("Size: %u\n", *p_size);
+
+    std::string message_field = req.matches[2].str();
+
+    strncpy(snd_msg, message_field.c_str(), (size_t)(*p_size));
+    snd_msg[*p_size] = '\0';
+
+    if(DEBUG) printf("Message: %s\n\n", snd_msg);
+
+    return 0;
 }
 
-uint8_t enclave_get_response(stored_data_t stored, sgx_enclave_id_t global_eid, uint8_t* response, char* querier_pk)
+int enclave_get_response(stored_data_t stored, 
+                         sgx_enclave_id_t global_eid, 
+                         uint8_t* response, 
+                         char* querier_pk, 
+                         uint8_t* access_allowed)
 {
     Timer t("enclave_get_response");
+
     // Get querier sealed key
     char seal_path[PATH_MAX_SIZE];
     sprintf(seal_path, "%s/%s", SEALS_PATH, querier_pk);
-    FILE* seal_file = fopen(seal_path, "rb");
+
     size_t sealed_size = sizeof(sgx_sealed_data_t) + sizeof(uint8_t)*16;
     uint8_t* sealed_querier_key = (uint8_t*)malloc(sealed_size);
+
+    if(DEBUG) printf("Reading key file from querier: %s\n", seal_path);
+
+    FILE* seal_file = fopen(seal_path, "rb");
     if (seal_file == NULL) {
         printf("\nWarning: Failed to open the seal file \"%s\".\n", seal_path);
-        fclose(seal_file);
         free(sealed_querier_key);
-        return 1;
+        return -1;
     }
     else {
         fread(sealed_querier_key,1,sealed_size,seal_file);
@@ -101,11 +135,13 @@ uint8_t enclave_get_response(stored_data_t stored, sgx_enclave_id_t global_eid, 
     sprintf(seal_path, "%s/%s", SEALS_PATH, stored.pk);
     seal_file = fopen(seal_path, "rb");
     uint8_t* sealed_publisher_key = (uint8_t*)malloc(sealed_size);
+
+    if(DEBUG) printf("Reading key file from publisher: %s\n", seal_path);
+
     if (seal_file == NULL) {
         printf("\nWarning: Failed to open the seal file \"%s\".\n", seal_path);
-        fclose(seal_file);
         free(sealed_publisher_key);
-        return 1;
+        return -1;
     }
     else {
         fread(sealed_publisher_key,1,sealed_size,seal_file);
@@ -115,21 +151,145 @@ uint8_t enclave_get_response(stored_data_t stored, sgx_enclave_id_t global_eid, 
     //printf("%s\n", querier_pk);
 
     // Call enclave to unseal keys, decrypt with the publisher key and encrypt with querier key
+    if(DEBUG) printf("Entering enclave\n");
+
+    sgx_status_t ret;
     sgx_status_t ecall_status;
-    //sgx_status_t sgx_status;
-    //uint32_t real_size;
-    uint8_t access_allowed = 0;
-    retrieve_data(global_eid, &ecall_status,
+    ret =retrieve_data(global_eid, &ecall_status,
         (sgx_sealed_data_t*)sealed_querier_key,
         (sgx_sealed_data_t*)sealed_publisher_key,
         stored.encrypted,
         stored.encrypted_size,
         querier_pk,
         response,
-        &access_allowed);
+        access_allowed);
+
+    if(DEBUG) printf("Exiting enclave\n");
+
+    if(ret != SGX_SUCCESS || ecall_status != SGX_SUCCESS) {
+        printf("\n(sec) Enclave problem inside retrieve_data:\n");
+        if(ret == 0x5001)
+            printf("Insuficient result buffer size (query).");
+        else if(ret == 0x5002)
+            printf("Access denied (query).");
+        else
+            printf("SGX error code %d, %d\n", (int)ret, (int)ecall_status);
+
+        free(sealed_querier_key);
+        free(sealed_publisher_key);
+        return -1;
+    }
+
     free(sealed_querier_key);
     free(sealed_publisher_key);
-    return access_allowed;
+    return 0;
+}
+
+int get_response(stored_data_t stored, 
+                 uint8_t* response, 
+                 char* querier_pk, 
+                 uint8_t* access_allowed)
+{
+    Timer t("get_response");
+
+    // Get querier key
+    char path[PATH_MAX_SIZE];
+    sprintf(path, "%s/%s_i", SEALS_PATH, querier_pk);
+
+    size_t size = sizeof(uint8_t)*16;
+    uint8_t* querier_key = (uint8_t*)malloc(size);
+
+    if(DEBUG) printf("Reading key file from querier: %s\n", path);
+
+    FILE* file = fopen(path, "rb");
+    if (file == NULL) {
+        printf("\nWarning: Failed to open the seal file \"%s\".\n", path);
+        free(querier_key);
+        return -1;
+    }
+    else {
+        fread(querier_key,1,size,file);
+        fclose(file);
+    }
+
+    // Get publisher sealed key
+    sprintf(path, "%s/%s_i", SEALS_PATH, stored.pk);
+    file = fopen(path, "rb");
+    uint8_t* publisher_key = (uint8_t*)malloc(size);
+
+    if(DEBUG) printf("Reading key file from publisher: %s\n", path);
+
+    if (file == NULL) {
+        printf("\nWarning: Failed to open the seal file \"%s\".\n", path);
+        free(publisher_key);
+        return -1;
+    }
+    else {
+        fread(publisher_key,1,size,file);
+        fclose(file);
+    }
+
+    //if(DEBUG) printf("Entering enclave\n");
+
+    // Decrypt stored data
+    uint32_t plain_data_size = MAX_DATA_SIZE;
+    uint8_t* plain_data = (uint8_t*)malloc(plain_data_size*sizeof(uint8_t));
+    sample_status_t ret;
+    ret = decrypt_data(publisher_key,
+                       stored.encrypted,
+                       stored.encrypted_size,
+                       plain_data,
+                       &plain_data_size);
+    free(publisher_key);
+    if(ret != SAMPLE_SUCCESS) {
+        printf("\n(ins) Error decrypting data for query\n");
+        free(querier_key);
+        free(plain_data);
+        return -1;
+    }
+
+    // Verify access permissions
+    // Get permissions and verify if querier is included
+    // pk|72d41281|type|123456|payload|250|permission1|72d41281
+    char* text = (char*)malloc(1+plain_data_size*sizeof(char));
+    memcpy(text, plain_data, plain_data_size);
+    text[plain_data_size] = '\0';
+    
+    int permission_count = 0;
+    *access_allowed = 0;
+
+    int i = 0;
+    char* token = strtok_r(text, "|", &text);
+    while (token != NULL && *access_allowed == 0)
+    {
+        i++;
+        token = strtok_r(NULL, "|", &text);
+ 
+        if (i == 7+2*permission_count) {
+            if(!memcmp(token, querier_pk, 8))
+                *access_allowed = 1;
+            permission_count++;
+        }
+    }
+
+    // Encrypt data with querier key
+    uint32_t response_size = stored.encrypted_size;
+    if (*access_allowed) { 
+        ret = encrypt_data(querier_key,
+                           response,
+                           &response_size,
+                           plain_data,
+                           plain_data_size);
+    }
+    free(querier_key);
+    if(ret != SAMPLE_SUCCESS) {
+        printf("\n(ins) Error encrypting data for query\n");
+        free(plain_data);
+        return -1;
+    }
+    free(plain_data);
+
+    return 0;
 }
 
 void make_response(uint8_t* enc_data, uint32_t enc_data_size, char* response)
@@ -139,48 +299,85 @@ void make_response(uint8_t* enc_data, uint32_t enc_data_size, char* response)
     char auxiliar[7];
     for (uint32_t count=0; count<enc_data_size; count++)
     {
-        sprintf(auxiliar, "0x%02x--", enc_data[count]);
-        memcpy(&response[15+count*6], auxiliar, 6);
+        sprintf(auxiliar, "%02x-", enc_data[count]);
+        memcpy(&response[15+count*3], auxiliar, 3);
     }
-    response[15+enc_data_size*6] = '\0';
+    response[15+enc_data_size*3] = '\0';
+    
+    if(DEBUG) printf("Sending message: %s\n", response);
 }
 
 int server_query(bool secure, const Request& req, Response& res, sgx_enclave_id_t global_eid)
 {
     Timer t("server_query");
+
     // Get message sent in HTTP header
     char* snd_msg = (char*)malloc(URL_MAX_SIZE*sizeof(char));
-    uint32_t size = get_query_message(req, snd_msg);
+
+    uint32_t size;
+    if(get_query_message(req, snd_msg, &size)) {
+        free(snd_msg);
+        return -1;
+    }
 
     // Get data index and pk
     char pk[9];
-    uint32_t disk_index = parse_query(size, snd_msg, pk);
+    uint32_t disk_index;
+    if(parse_query(size, snd_msg, pk, &disk_index)) {
+        free(snd_msg);
+        return -1;
+    }
     free(snd_msg);
+    // printf("Index: %u\n", disk_index);
 
     // Read data from BD/disk copy
     char* data = (char *)malloc(MAX_DATA_SIZE*sizeof(char));
-    file_read(disk_index, data);
+
+    if(DEBUG) printf("Reading data from disk\n");
+
+    if(file_read(disk_index, data)) {
+        free(data);
+        return -1;
+    }
 
     // Separate parameters of stored data
-    stored_data_t message = get_stored_parameters(data);
+    stored_data_t message; 
+    if(get_stored_parameters(data, &message)) {
+        free(data);
+        return -1;
+    }
     free(data);
 
     uint8_t *enc_data = (uint8_t*)malloc(message.encrypted_size*sizeof(char));
-    char *response = (char*)malloc((15+6*message.encrypted_size+1)*sizeof(char));
-    if (secure == true)
-    {
-        uint8_t access_allowed = enclave_get_response(message, global_eid, enc_data, pk);
-        if (!access_allowed)
-            res.set_content("Denied", "text/plain");
-        else {
-            make_response(enc_data, message.encrypted_size, response);
-            res.set_content(response, "text/plain");
+    char *response = (char*)malloc((15+3*message.encrypted_size+1)*sizeof(char));
+
+    uint8_t access_allowed;
+    if (secure == true) {
+        if(enclave_get_response(message, global_eid, enc_data, pk, &access_allowed)) {
+            free(enc_data);
+            free(response);
+            return -1;
         }
-    } else{
-        make_response(message.encrypted, message.encrypted_size, response);
+    } 
+
+    else {
+        if(get_response(message, enc_data, pk, &access_allowed)) {
+            free(enc_data);
+            free(response);
+            return -1;
+        }
+    }
+
+    if (!access_allowed) {
+        if(DEBUG) printf("\nAccess denied\n");
+        res.set_content("Denied", "text/plain");
+    } 
+    else {
+        if(DEBUG) printf("\nAccess accepted\n");
+        make_response(enc_data, message.encrypted_size, response);
         res.set_content(response, "text/plain");
     }
-    //printf("%s\n", response);
+    
     free(response);
     free(enc_data);
     free(message.encrypted);

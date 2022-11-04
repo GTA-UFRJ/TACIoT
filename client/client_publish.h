@@ -5,13 +5,10 @@
  */
 
 #include <stdio.h>
-#include "sample_libcrypto.h"   
+#include "cli.h"
 
-// Stop the server (for test only)
-void stop_signal();
-
-// Send data for publishing
-void send_data_for_publishing(char* , size_t, char*, uint32_t);
+// Send data for publication
+int send_data_for_publication(char*, char*, uint8_t*, uint32_t);
 
 // Receive plaintext data, encrypt and send to server for publishing
-int client_publish(uint8_t*, uint32_t, char*, uint32_t);
+int client_publish(uint8_t*, client_data_t);

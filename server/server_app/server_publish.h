@@ -11,10 +11,10 @@
 #include "server.h"
 
 // Parse request string and fill fields
-iot_message_t parse_request(uint32_t , char* );
+int parse_request(uint32_t , char*, iot_message_t* );
 
 // Get publish message sent by HTTP header
-uint32_t get_publish_message(const httplib::Request& , char* );
+int get_publish_message(const httplib::Request& , char*, uint32_t* );
 
 // Get data, process it and write to database
 int server_publish(bool, const httplib::Request&, httplib::Response&, sgx_enclave_id_t);

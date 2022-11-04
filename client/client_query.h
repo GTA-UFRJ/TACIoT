@@ -6,13 +6,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "sample_libcrypto.h"   
 
 // Separate size and ecnrypted data from message received
-uint32_t parse_server_response(char* , uint8_t* );
+int parse_server_response(char*, uint8_t*, uint32_t* );
 
 // Send message quering some data
-size_t send_query_message(uint32_t, uint8_t*);
+int send_query_message(uint32_t, uint8_t*, uint32_t* );
 
 // Receive query message and send to server 
-int client_query(uint32_t,  uint32_t* , uint8_t* );
+int client_query(uint8_t*, uint8_t*, uint32_t,  uint32_t* );

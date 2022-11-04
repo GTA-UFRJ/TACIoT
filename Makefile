@@ -93,13 +93,14 @@ endif
 
 Server_Cpp_Files := server/server_app/server.cpp \
 					server/server_app/server_publish.cpp \
+					server/server_app/server_register.cpp \
 					server/server_app/server_query.cpp \
 					server/server_app/server_processing.cpp \
 					server/server_app/server_disk_manager.cpp \
-					server/server_app/register_client.cpp \
+					server/server_app/server_aggregation.cpp \
 					utils/utils.cpp \
+					utils/encryption.cpp \
 					utils/utils_sgx.cpp \
-					utils/message_handler.cpp \
 					benchmark/timer.cpp
 
 Server_Include_Paths := -Iutils \
@@ -107,8 +108,6 @@ Server_Include_Paths := -Iutils \
 					 	-I. \
 					 	-Iclient \
 					 	-Isample_libcrypto \
-					 	-Iecp \
-					 	-IIAS \
 					 	-I$(HTTPLIB_DIR) \
 						-Ibenchmark
 
@@ -131,9 +130,7 @@ Server_Link_Flags := -L$(SGX_LIBRARY_PATH) \
 					 -L. \
 					 -Lserver/server/server_app \
 					 -Lutils \
-					 -LIAS \
 					 -Lsample_libcrypto \
-					 -Lecp \
 					 -l$(Urts_Library_Name) \
 					 -lsgx_ukey_exchange \
 					 -lpthread \
@@ -154,21 +151,14 @@ Server_Name := Server
 ######## Client Settings ########
 
 Client_Cpp_Files := client/cli.cpp \
-					client/request_register.cpp \
-					client/initialize_communication.cpp \
 					client/client_publish.cpp \
 					client/client_query.cpp \
-					client/encryption.cpp \
-					ecp/ecp.cpp \
-					IAS/ias_simulation.cpp \
 					utils/utils.cpp \
-					utils/message_handler.cpp \
+					utils/encryption.cpp \
 					benchmark/timer.cpp
 
 Client_Include_Paths := -I. \
 						-Iclient \
-						-Iecp \
-						-IIAS \
 						-Iutils \
 						-Isample_libcrypto \
 						-I$(SGX_SDK)/include \
@@ -189,7 +179,6 @@ Client_Link_Flags := -L$(SGX_LIBRARY_PATH) \
 					 -Wl,-rpath=$(CURDIR)/sample_libcrypto \
 					 -Wl,-rpath=$(CURDIR) \
 					 -Lutils \
-					 -Lecp
 
 Client_Cpp_Objects := $(Client_Cpp_Files:.cpp=.o)
 
@@ -315,13 +304,9 @@ utils/%.o: utils/%.cpp
 	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Server_Cpp_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
 
-ecp/%.o: ecp/%.cpp utils/utils.cpp
-	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Client_Cpp_Flags) -c $< -o $@
-	@echo "CXX  <=  $<"
-
-IAS/%.o: IAS/%.cpp ecp/ecp.cpp
-	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Client_Cpp_Flags) -c $< -o $@
-	@echo "CXX  <=  $<"
+# g++ -Wall ./benchmark/timer.cpp ./benchmark/timer_influence_evaluation.cpp -o timer_test
+benchmark/timer.o: benchmark/timer.cpp
+	@$(CXX) -Wall -c $< -o $@
 
 ######## Server Objects ########
 
@@ -335,7 +320,7 @@ server/server_app/server_enclave_u.o: server/server_app/server_enclave_u.c
 	@$(CC) $(SGX_COMMON_CFLAGS) $(Server_C_Flags) -c $< -o $@
 	@echo "CC   <=  $<"
 
-server/server_app/%.o: server/server_app/%.cpp server/server_app/server_enclave_u.h utils/utils.cpp utils/utils_sgx.cpp utils/message_handler.cpp
+server/server_app/%.o: server/server_app/%.cpp server/server_app/server_enclave_u.h utils/utils.cpp utils/utils_sgx.cpp 
 	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Server_Cpp_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
  
@@ -345,7 +330,7 @@ $(Server_Name): server/server_app/server_enclave_u.o $(Server_Cpp_Objects)
 
 ######## Client Objects ########
 
-client/%.o: client/%.cpp ecp/ecp.cpp IAS/ias_simulation.cpp
+client/%.o: client/%.cpp
 	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Client_Cpp_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
 
@@ -389,4 +374,5 @@ clean:
 	$(Client_Cpp_Objects) \
 	$(Enclave_Cpp_Objects) \
 	server/server_app/server_enclave_u.* \
-	server/server_enclave/server_enclave_t.* 
+	server/server_enclave/server_enclave_t.* \
+	core

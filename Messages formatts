@@ -1,0 +1,113 @@
+1) HTTP Wrapper
+
+http://[server_ip]:[server_port]/[message_type]/size=[message_size]/[message]
+
+[message_type] = {"register", "publish", "query"}
+
+[message_size] = number of bytes (characteres) in the message, in decimal, including End of String (EOS, '\0')
+
+Exemple 1:
+
+http://localhost:7778/register/size=63/pk|72d41281|ck|00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-"
+
+Example 2:
+
+http://localhost:7778/query/size=24/pk|72d41281|index|000000
+
+Example 3:
+
+http://localhost:7778/publish/size=631/pk|72d41281|type|123456|size|62|encrypted|dd-b1-b6-b8-22-d3-9a-76-1c-b6-c0-30-6a-e9-21-5a-00-00-00-00-00-00-00-00-00-00-00-00-73-e3-a6-f9-52-d2-97-a3-c1-10-f3-c5-05-cb-8e-1d-8b-e2-cf-cc-16-26-2c-4f-83-94-e4-9a-e0-ee-b3-9c-50-63-68-4d-21-12-f0-a6-12-bc-86-9d-e1-a3-9b-d9-f9-31-d2-7c-63-e3-40-0e-08-17-d3-d2-f8-bf-bf-c0-ee-ea-4c-b7-90-df-
+
+
+
+
+2) CACIC Registration Message
+
+WARNING: this is an insecure message, used only for test purposes. Production code must leverage attestation.
+
+pk|[key_id]|ck|[communication_key]
+
+[ket_id] = 8 characters + end of string character (total of 9 characters). Hexadecimal ID releated to the client. It is used to search for the client key file.
+
+[communication_key] = sequence of 16 "xx-" triples. Each "xx" indicates the key byte value in hexadecimal.
+
+Example:
+
+pk|72d41281|ck|00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-
+
+
+
+
+3) CACIC Publication Message
+
+pk|[key_id]|type|[data_type]|size|[encrypted_message_size]|encrypted|[encrypted_message]
+
+[ket_id] = 8 characters + end of string character (total of 9 characters). Hexadecimal ID releated to the client. It is used to search for the client key file.
+
+[data_type] = 6 characters numeric decimal code indicating what type of processing must be applied to the data. "123456" is used for temperature data and "555555" is used for aggregation of temperature data.
+
+[encrypted_message_size] = 2 digits hexadecimal number representing the number of bytes in the encrypted data.
+
+[encrypted_message] = sequence of n "xx-" triples, where n is the encrypted_message_size. Each "xx" indicates the data byte value in hexadecimal.
+
+Example:
+
+pk|72d41281|type|123456|size|62|encrypted|dd-b1-b6-b8-22-d3-9a-76-1c-b6-c0-30-6a-e9-21-5a-00-00-00-00-00-00-00-00-00-00-00-00-73-e3-a6-f9-52-d2-97-a3-c1-10-f3-c5-05-cb-8e-1d-8b-e2-cf-cc-16-26-2c-4f-83-94-e4-9a-e0-ee-b3-9c-50-63-68-4d-21-12-f0-a6-12-bc-86-9d-e1-a3-9b-d9-f9-31-d2-7c-63-e3-40-0e-08-17-d3-d2-f8-bf-bf-c0-ee-ea-4c-b7-90-df-
+
+
+
+
+4) CACIC Query Message
+
+pk|[key_id]|index|[data_location]
+
+[key_id] = 8 characters + end of string character (total of 9 characters). Hexadecimal ID releated to the client. It is used to search for the client key file.
+
+[data_location] = indicates where the data is on the database. For the disk copy access, it is a numeric decimal value. 
+
+Example:
+
+pk|72d41281|index|000000
+
+
+
+
+5) Temperature data
+
+pk|[key_id]|type|123456|payload|[measurement]|permission1|[key_id_1]| ... |permissionX|[key_id_X]
+
+[key_id] = 8 characters + end of string character (total of 9 characters). Hexadecimal ID releated to the client. It is used to search for the client key file.
+
+[measurement] = value itself.
+
+[key_id_i] = key ID of i'th user that can access this data.
+
+
+
+
+6) Temperature aggregation
+
+pk|[key_id]|type|555555|payload|[measurement]|permission1|[key_id_1]
+
+[key_id] = 8 characters + end of string character (total of 9 characters). Hexadecimal ID releated to the client. It is used to search for the client key file.
+
+[measurement] = new data to be aggregated with the old ones.
+
+[key_id_i] = key ID of i'th user that can access this data.
+
+
+
+
+7) Disk Copy Access Sample
+
+type|[type]|pk|[key_id]|size|[encrypted_size]|encrypted|[encrypted_data]
+
+[data_type] = 6 characters numeric decimal code indicating what type of processing must be applied to the data. "123456" is used for temperature data and "555555" is used for aggregation of temperature data.
+
+[ket_id] = 8 characters + end of string character (total of 9 characters). Hexadecimal ID releated to the client. It is used to search for the client key file.
+
+[encrypted_size] = 2 digits hexadecimal number on the "0x00" formatt, representing the number of bytes in the encrypted data.
+
+[encrypted_message] = sequence of n "xx-" triples, where n is the encrypted_message_size. Each "xx" indicates the data byte value in hexadecimal.
+
+
