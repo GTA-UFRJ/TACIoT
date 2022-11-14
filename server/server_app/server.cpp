@@ -33,7 +33,7 @@ void signal_handler (int sigNumber)
 
 int main (int argc, char** argv)
 {
-    // Activate andler for process termination and interruption signals
+    // Activate handler for process termination and interruption signals
     if(signal(SIGTERM, signal_handler) == SIG_ERR || signal(SIGINT, signal_handler) == SIG_ERR) 
         printf("WARNING: signals not treated as expected\n");
 
@@ -48,6 +48,13 @@ int main (int argc, char** argv)
     bool secure;
     *argv[1]=='i' ? secure=false : secure=true;  
 
+    // Initialize database
+    /* if(configure_database()) {
+     *   printf("Problem configuring database\n");
+     *   return -1;
+     * }
+     */
+    
     // Initialize enclave
     char* token_filename = (char*)malloc(PATH_MAX_SIZE*sizeof(char));
     sprintf(token_filename, "%s/%s", TOKENS_PATH, TOKEN_NAME);

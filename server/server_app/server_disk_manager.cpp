@@ -32,12 +32,13 @@ int file_write (iot_message_t rcv_msg, uint8_t* processed_data, uint32_t real_si
     fclose(db_file);
 
     char auxiliar[4];
-    char *enc_write = (char*)malloc(3*real_size+1);
+    char *enc_write = (char*)malloc(3*real_size+2);
     for (int i=0; i<int(real_size); i++) {
         sprintf(auxiliar, "%02x-", processed_data[i]);
         memcpy(&enc_write[3*i], auxiliar, 3);
     }
     enc_write[3*real_size] = '\n';
+    enc_write[3*real_size+1] = '\0';
 
     if(DEBUG) printf("\nWriting data to file: %s%s\n", publish_header, enc_write);
 

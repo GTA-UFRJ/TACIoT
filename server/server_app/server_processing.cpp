@@ -68,6 +68,7 @@ int no_processing(iot_message_t rcv_msg, sgx_enclave_id_t global_eid, bool secur
     Timer t("no_processing");
     if(secure == false) {
 
+
         if(file_write (rcv_msg, rcv_msg.encrypted, rcv_msg.encrypted_size)) {
             printf("(ins) Failed to publish message.\n");
             return -1;
@@ -131,8 +132,7 @@ int aggregation_i(iot_message_t rcv_msg, uint8_t* processed_data, uint32_t* p_re
     if(DEBUG) printf("Collecting datas for aggregating\n");
 
     if(get_aggregation_datas(rcv_msg.pk, datas, datas_sizes, data_count, &filtered_data_count)) {
-        free(datas);
-        free(datas_sizes);
+        free_data_array((char**)datas, datas_sizes, filtered_data_count);
         free(key);
         return -1;
     }
@@ -148,13 +148,11 @@ int aggregation_i(iot_message_t rcv_msg, uint8_t* processed_data, uint32_t* p_re
                             rcv_msg.pk, 
                             processed_data, 
                             p_real_size)) {
-        free(datas);
-        free(datas_sizes);
+        free_data_array((char**)datas, datas_sizes, filtered_data_count);
         free(key);
         return -1;
     }
-    free(datas);
-    free(datas_sizes);
+    free_data_array((char**)datas, datas_sizes, filtered_data_count);
     free(key);
     return 0;
 }
@@ -201,8 +199,7 @@ int aggregation_s(iot_message_t rcv_msg, uint8_t* processed_data, sgx_enclave_id
     
     uint32_t filtered_data_count = 0;
     if(get_aggregation_datas(rcv_msg.pk, datas, datas_sizes, data_count, &filtered_data_count)) {
-        free(datas);
-        free(datas_sizes);
+        free_data_array((char**)datas, datas_sizes, filtered_data_count);
         free(sealed_key);
         return -1;
     }
@@ -237,14 +234,12 @@ int aggregation_s(iot_message_t rcv_msg, uint8_t* processed_data, sgx_enclave_id
         else
             printf("SGX error codes %d, %d\n", (int)sgx_status, (int)ecall_status);
         free(sealed_key);
-        free(datas);
-        free(datas_sizes);
+        free_data_array((char**)datas, datas_sizes, filtered_data_count);
         return -1;
     }
     }
     free(sealed_key);
-    free(datas);
-    free(datas_sizes);
+    free_data_array((char**)datas, datas_sizes, filtered_data_count);
     return 0;
 }
 

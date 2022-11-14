@@ -56,4 +56,7 @@ typedef enum {
     UNKNOWN                     //x
 } error_code;
 
+
+void free_data_array(char** , uint32_t* , uint32_t );
+
 #endif // _UTILS_H_
