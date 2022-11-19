@@ -17,7 +17,6 @@ Timer::Timer(std::string label_arg) {
         this->label_index = labels.size();
         labels.push_back(label_arg);
         
-        size_t timers_count = times.size();
         timelist_t times_measurements(1);
         times_measurements[0] = 0;
         times.push_back(times_measurements);

@@ -98,6 +98,7 @@ Server_Cpp_Files := server/server_app/server.cpp \
 					server/server_app/server_processing.cpp \
 					server/server_app/server_disk_manager.cpp \
 					server/server_app/server_aggregation.cpp \
+					server/server_app/server_database_manager.cpp \
 					utils/utils.cpp \
 					utils/encryption.cpp \
 					utils/utils_sgx.cpp \
@@ -135,6 +136,7 @@ Server_Link_Flags := -L$(SGX_LIBRARY_PATH) \
 					 -lsgx_ukey_exchange \
 					 -lpthread \
 					 -lsample_libcrypto \
+					 -lsqlite3 \
 					 -Wl,-rpath=$(CURDIR)/sample_libcrypto \
 					 -Wl,-rpath=$(CURDIR) 
 

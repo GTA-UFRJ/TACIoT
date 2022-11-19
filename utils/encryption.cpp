@@ -108,7 +108,7 @@ sample_status_t decrypt_data (
 void quick_decrypt_debug (uint8_t* key, uint8_t* enc, uint32_t enc_size) {
     uint32_t plain_size = enc_size - 12 - 16;
     uint8_t plain[plain_size+1];
-    sample_status_t ret = decrypt_data(key, enc, enc_size, plain, &plain_size);
+    decrypt_data(key, enc, enc_size, plain, &plain_size);
     plain[plain_size] = '\0';
     printf("Decrypted: %s\n", (char*)plain);
 }

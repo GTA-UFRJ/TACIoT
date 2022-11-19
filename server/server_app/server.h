@@ -8,6 +8,9 @@
 
 #ifndef CLIENT_PK
 #define CLIENT_PK
+
+#include "sample_libcrypto.h"
+
 typedef struct sample_ec_pub_t
 {
     uint8_t gx[32];

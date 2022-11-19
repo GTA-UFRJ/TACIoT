@@ -6,13 +6,12 @@
 
 #include "server_aggregation.h"
 #include "server_disk_manager.h"
-
+#include "server_database_manager.h"
 
 int sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
                          uint32_t encrypted_aggregation_msg_size,
                          uint8_t* key, 
                          uint8_t** data_array, 
-                         uint32_t* size_array, 
                          uint32_t data_count, 
                          char* pk,
                          uint8_t* result,
@@ -25,7 +24,7 @@ int sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
 
     // Decrypt publisher data
 
-    if(DEBUG) printf("Decrypting message\n");
+    if(DEBUG) printf("Decrypting message: ");
 
     uint32_t publisher_data_size = MAX_DATA_SIZE*sizeof(uint8_t);
     uint8_t* publisher_data = (uint8_t*)malloc((size_t)publisher_data_size);
@@ -40,7 +39,7 @@ int sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
         return -1;
     }
 
-    if(DEBUG) printf("Decrypted publisher data: %s\n", (char*)publisher_data);
+    if(DEBUG) printf("%s\n", (char*)publisher_data);
 
     // Pick publisher access permissions
     // pk|72d41281|type|weg_multimeter|payload|250|permission1|72d41281
@@ -66,10 +65,14 @@ int sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
     unsigned long total = 0;
     for (uint32_t index = 0; index < data_count; index++) {
 
+        // Separate parameters of stored data
+        stored_data_t stored_data;
+        get_stored_parameters((char*)(data_array[index]),&stored_data);
+
         // Decrypt data
         ret = decrypt_data(key,
-                           data_array[index],
-                           size_array[index],
+                           stored_data.encrypted,
+                           stored_data.encrypted_size,
                            client_data,
                            &client_data_size);
         if(ret != SAMPLE_SUCCESS) {
@@ -86,18 +89,18 @@ int sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
 
        // Verify if publisher can access this data
         // pk|72d41281|type|weg_multimeter|payload|250|permission1|72d41281
-       char auxiliar_client_data [1+size_array[index]*sizeof(char)];
-       memcpy(auxiliar_client_data, client_data, size_array[index]);
-       auxiliar_client_data[size_array[index]] = '\0';
+       char auxiliar_client_data [1 + stored_data.encrypted_size * sizeof(char)];
+       memcpy(auxiliar_client_data, client_data, stored_data.encrypted_size);
+       auxiliar_client_data[stored_data.encrypted_size] = '\0';
 
        char payload[4];
        unsigned long numeric_payload = 0;
 
        int permission_count = 0;
        bool accepted = false;
-       int i = 0;
+       i = 0;
        char* p_auxiliar_client_data = &auxiliar_client_data[0];
-       char* token = strtok_r(p_auxiliar_client_data, "|", &p_auxiliar_client_data);
+       token = strtok_r(p_auxiliar_client_data, "|", &p_auxiliar_client_data);
        while (token != NULL && accepted == false)
         {
             i++;
@@ -143,7 +146,7 @@ int sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
                        result,
                        result_size,
                        (uint8_t*)aggregation_data,
-                       aggregation_data_size);
+                       (uint32_t)aggregation_data_size);
     if(ret != SAMPLE_SUCCESS) {
         printf("\n(ins) Error encrypting data for aggregation\n");
         free(client_data);
@@ -156,38 +159,46 @@ int sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
     return 0;
 }
 
+int get_db_request_i(iot_message_t rcv_msg, uint8_t* key, char* db_command) {
 
+    // Decrypt publisher data to get the DB request
+    if(DEBUG) printf("\nDecrypting publisher message: ");
 
-int get_aggregation_datas(char* pk, uint8_t** datas, uint32_t* sizes, uint32_t data_count, uint32_t* p_filtered_data_count) {
+    uint32_t publisher_data_size = MAX_DATA_SIZE*sizeof(uint8_t);
+    uint8_t* publisher_data = (uint8_t*)malloc((size_t)publisher_data_size+1);
 
-    // Read all data in file
-    char* data = (char *)malloc(MAX_DATA_SIZE*sizeof(char));
-    memset(data, 0, MAX_DATA_SIZE*sizeof(char));
-
-    *p_filtered_data_count = 0;
-    uint32_t offset = 0;
-    for(uint32_t index=0; index < data_count; index++) {
-        file_read(offset, data);
-        stored_data_t stored_data;
-        if(get_stored_parameters(data, &stored_data)) {
-            free(data);
-            free(datas);
-            return -1;
-        }
-        //printf("%02x\n",(int)stored_data.encrypted_size);
-        //printf("%s\n",stored_data.pk);
-        //printf("%s\n",stored_data.type);
-
-        memset(data, 0, MAX_DATA_SIZE*sizeof(char));
-        offset += 5+7+3+9+5+5+10+stored_data.encrypted_size*3+1;
-
-        // Filter energy consumption data from this client
-        datas[*p_filtered_data_count] = (uint8_t*)malloc(stored_data.encrypted_size*sizeof(uint8_t*));
-        if(strcmp(stored_data.type, "123456") == 0 && strcmp(pk, stored_data.pk) == 0) {
-            memcpy(datas[*p_filtered_data_count], stored_data.encrypted, stored_data.encrypted_size);
-            sizes[*p_filtered_data_count] = stored_data.encrypted_size;
-            (*p_filtered_data_count)++;
-        }
+    sample_status_t ret = SAMPLE_SUCCESS;
+    ret  = decrypt_data(key, 
+                        rcv_msg.encrypted, 
+                        rcv_msg.encrypted_size, 
+                        publisher_data,
+                        &publisher_data_size);
+    if(ret != SAMPLE_SUCCESS) {
+        printf("\n(ins) Error decrypting publisher data for aggregation\n");
+        free(publisher_data);
+        return -1;
     }
-    free(data);
+
+    publisher_data[publisher_data_size] = 0;
+    if(DEBUG) printf("%s\n", (char*)publisher_data);
+
+    // Get DB request
+    if(DEBUG) printf("Separating DB request embeded inside decrypted message: ");
+
+    int i = 0;
+    char* publisher_data_string = (char*)publisher_data;
+    char* token = strtok_r(publisher_data_string, "|", &publisher_data_string);
+    while (token != NULL) {
+        i++;
+        token = strtok_r(NULL, "|", &publisher_data_string);
+
+        if(i == 5) 
+            strcpy(db_command, token);
+    }
+    
+    if(DEBUG) printf("%s\n\n", db_command);
+
+    free(publisher_data);
+
+    return 0;
 }

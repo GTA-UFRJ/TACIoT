@@ -68,13 +68,18 @@ int parse_server_response(char* msg, uint8_t* enc_message, uint32_t* size) {
     return 0;
 }
 
-int send_query_message(uint32_t data_index, uint8_t* enc_message, uint32_t* size)
+int send_query_message(uint32_t data_index, uint8_t* enc_message, char* command, uint32_t* size)
 {
+    // Replace SPACE character in command by "_"
+    for(unsigned i=0; i<strlen(command); i++) 
+        command[i] = (command[i] == ' ') ? '_' : command[i];
+
     // Build query message
     // http://localhost:7778/query/size=24/pk|72d41281|index|000000
     char http_request[URL_MAX_SIZE];
     char http_response[URL_MAX_SIZE];
-    sprintf(http_request, "/query/size=24/pk|%s|index|%06u", CLIENT_ID, data_index);
+    uint32_t message_size = 33+(uint32_t)strlen(command);
+    sprintf(http_request, "/query/size=%u/pk|%s|index|%06u|command|%s", message_size, CLIENT_ID, data_index, command);
 
     // Send query message
     httplib::Error err = httplib::Error::Success;
@@ -94,7 +99,7 @@ int send_query_message(uint32_t data_index, uint8_t* enc_message, uint32_t* size
             else {
                 sprintf(http_response,"%s",res->body.c_str());
 
-                if(strcmp(http_response, "Denied")) {
+                if(!strcmp(http_response, "Denied")) {
                     printf("Received: Denied\n");
                     return -1;
                 }
@@ -113,14 +118,14 @@ int send_query_message(uint32_t data_index, uint8_t* enc_message, uint32_t* size
     return 0;
 }
 
-int client_query(uint8_t* key, uint8_t* data, uint32_t data_index, uint32_t* data_size)
+int client_query(uint8_t* key, uint8_t* data, uint32_t data_index, char* command, uint32_t* data_size)
 {
     // Send message for quering
     //uint8_t *enc_message = (uint8_t*)malloc(MAX_ENC_DATA_SIZE*sizeof(uint8_t));
     uint32_t enc_message_size = MAX_ENC_DATA_SIZE;
     uint8_t* enc_message = (uint8_t*)malloc(MAX_ENC_DATA_SIZE*sizeof(uint8_t));
     
-    if(send_query_message(data_index, enc_message, &enc_message_size) != 0) {
+    if(send_query_message(data_index, enc_message, command, &enc_message_size) != 0) {
         free(enc_message);
         return -1;
     }

@@ -1,27 +1,11 @@
 #include <stdio.h>
 #include "server_database_manager.h"
 #include <string.h>
+#include "config_macros.h"
+#include "utils.h"
 
 // COMPILATION: g++ -c server/server_app/server_database_manager.cpp -o server/server_app/server_database_manager.o
 // LINKEDITON: g++ server/server_app/server_database_manager.o -l sqlite3 -o server/server_app/server_database_manager
-
-// Just for tests
-void debug_print_encrypted(
-    size_t encMessageLen, 
-    uint8_t* encMessage){
-        printf("Size = %d\nData = ", (int)encMessageLen);
-        for (size_t byte=0; byte<encMessageLen; byte++){
-            printf("0x%02x, ", encMessage[byte]);
-        }
-        printf("\n");
-}
-
-void free_data_array(char** datas, uint32_t* datas_sizes, uint32_t data_count) {
-    for(unsigned i = 0; i < data_count; i++)
-        free(datas[i]);
-    free(datas);
-    free(datas_sizes);
-}
 
 void free_callback_arg(callback_arg_t callback_arg) {
     for(unsigned i = 0; i < callback_arg.data_count; i++)
@@ -40,11 +24,11 @@ static int callback_query(void* received_from_exec, int num_columns, char** colu
     
     callback_arg_t* received_from_exec_tranformed = (callback_arg_t*)received_from_exec;
 
-    // database_read only allocated the array. Now we will allocate memory for the string ate the selected position
-    char* new_data = (char*)malloc(1024*sizeof(char)); // 1024 -> MAX_DATA_SIZE
+    // database_read only allocated the array. Now we will allocate memory for the string at the selected position
+    char* new_data = (char*)malloc(MAX_DATA_SIZE*sizeof(char)); 
 
     // Navigate througth all colums of the queried entry
-    for(unsigned column_index = 0; column_index < num_columns; column_index++) {
+    for(int column_index = 0; column_index < num_columns; column_index++) {
 
         // Verify if column value is not NULL
         if(columns_values[column_index] == 0) {
@@ -89,6 +73,8 @@ static int callback_query(void* received_from_exec, int num_columns, char** colu
 }
 
 int database_write(sqlite3* db, iot_message_t rcv_msg) {
+    
+    if(DEBUG) printf("Writing to dabase\n"); 
 
     // Format encrypted message for publication
     char auxiliar[4];
@@ -97,18 +83,20 @@ int database_write(sqlite3* db, iot_message_t rcv_msg) {
         sprintf(auxiliar, "%02x-", rcv_msg.encrypted[i]);
         memcpy(&enc_write[3*i], auxiliar, 3);
     }
-    enc_write[3*rcv_msg.encrypted_size] = '\n';
+    enc_write[3*rcv_msg.encrypted_size] = '\0';
     
     // Create SQL statement for inserting data into the database
-    char* create_table_sql_statement = (char*)malloc(1124*sizeof(char));
-    sprintf(create_table_sql_statement, 
+    char* insert_sql_statement = (char*)malloc((MAX_DATA_SIZE+100)*sizeof(char));
+    sprintf(insert_sql_statement, 
     "INSERT INTO TACIOT (TYPE,PK,SIZE,ENCRYPTED) "\
     "VALUES ('%s','%s',%u,'%s');",
     rcv_msg.type, rcv_msg.pk, rcv_msg.encrypted_size, enc_write);
+    
+    if(DEBUG) printf("SQL insert statement: %s\n", insert_sql_statement); 
 
     // Execute SQL statetment for inserting data (without callback function)
     char *error_message = 0;
-    int ret = sqlite3_exec(db, create_table_sql_statement, NULL, NULL, &error_message);
+    int ret = sqlite3_exec(db, insert_sql_statement, NULL, NULL, &error_message);
     
     if(ret != SQLITE_OK ){
         printf("SQL error: %s\n", error_message);
@@ -124,12 +112,20 @@ int database_write(sqlite3* db, iot_message_t rcv_msg) {
 }
 
 int database_read(sqlite3* db, char* command, char** datas, uint32_t* datas_sizes, uint32_t* data_count) {
+   
+    if(DEBUG) printf("Reading from database\n");
+
+    if(DEBUG) printf("SQL read statement: %s\n", command); 
+
+    // Replace "_" in command by SPACE character
+    for(unsigned i=0; i<strlen(command); i++) 
+        command[i] = (command[i] == '_') ? ' ' : command[i];
     
     callback_arg_t passed_to_callback;
 
     // Allocate an array with 2048 strings for the returned datas
-    passed_to_callback.datas = (char**)malloc(2048*sizeof(char*));
-    passed_to_callback.datas_sizes = (uint32_t*)malloc(2048*sizeof(uint32_t));    // 2048 = MAX_NUM_DATAS_QUERIED
+    passed_to_callback.datas = (char**)malloc(MAX_NUM_DATAS_QUERIED*sizeof(char*));
+    passed_to_callback.datas_sizes = (uint32_t*)malloc(MAX_NUM_DATAS_QUERIED*sizeof(uint32_t));    // 2048 = MAX_NUM_DATAS_QUERIED
     passed_to_callback.data_count = 0;
 
     // Execute SQL statetment for quering data (with callback function)
@@ -149,9 +145,8 @@ int database_read(sqlite3* db, char* command, char** datas, uint32_t* datas_size
 
     // Copy datas returned from callback by reference (suposing that datas is allocated)
     *data_count = passed_to_callback.data_count;
-    size_t data_size; 
+    uint32_t data_size; 
     for(unsigned i=0; i<passed_to_callback.data_count; i++) {
-
         data_size = passed_to_callback.datas_sizes[i];
         datas_sizes[i] = data_size;
         datas[i] = (char*)malloc(data_size * sizeof(char));
@@ -160,7 +155,7 @@ int database_read(sqlite3* db, char* command, char** datas, uint32_t* datas_size
 
     return 0;
 }
-
+/*
 int main () {
 
     // Testing publication
@@ -201,3 +196,4 @@ int main () {
 
     return 0;
 }
+*/

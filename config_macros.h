@@ -140,3 +140,15 @@
 #ifndef AGGREGATE_GMT_PERMISSION_1_SAMPLE
 #define AGGREGATE_GMT_PERMISSION_1_SAMPLE "72d41281"
 #endif
+
+#ifndef MAX_NUM_DATAS_QUERIED
+#define MAX_NUM_DATAS_QUERIED 2048
+#endif
+
+#ifndef MAX_DB_COMMAND_SIZE
+#define MAX_DB_COMMAND_SIZE 2048
+#endif
+
+#ifndef DATABASE_PATH
+#define DATABASE_PATH "/home/guiaraujo/TACIoT/database/taciot.db"
+#endif

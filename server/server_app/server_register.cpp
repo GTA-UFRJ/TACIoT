@@ -26,7 +26,7 @@
 using namespace httplib;
 
 // pk|72d41281|ck|00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00- (16 bytes of zeros, for example) 
-int parse_register(uint32_t size, char* msg, register_message_t* p_rcv_msg)
+int parse_register(char* msg, register_message_t* p_rcv_msg)
 {
     Timer t("parse_register");
     
@@ -126,7 +126,7 @@ int enclave_seal_key(register_message_t rcv_msg, sgx_enclave_id_t global_eid, ch
         return -1;
     }
 
-    if(write_key(rcv_msg.pk, temp_sealed_buf, real_sealed_size, path)) {
+    if(write_key(temp_sealed_buf, real_sealed_size, path)) {
         return -1;
     }
     free(temp_sealed_buf);
@@ -149,7 +149,7 @@ int server_register(bool secure, const Request& req, Response& res, sgx_enclave_
 
     // pk|72d41281|ck|00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00- (16 bytes of zeros, for example) 
     register_message_t rcv_msg;
-    if(parse_register(size, snd_msg, &rcv_msg))
+    if(parse_register(snd_msg, &rcv_msg))
         return -1;
     free(snd_msg);
 
@@ -165,7 +165,7 @@ int server_register(bool secure, const Request& req, Response& res, sgx_enclave_
             return -1;
         }
 
-        if(write_key(rcv_msg.pk, (uint8_t*)rcv_msg.ck, 16, path)) {
+        if(write_key((uint8_t*)rcv_msg.ck, 16, path)) {
             printf("registration error\n");
             res.set_content("registration error", "text/plain");
             return -1;

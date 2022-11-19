@@ -16,6 +16,7 @@
 #include "server_query.h"
 #include "server_processing.h"
 #include "server_disk_manager.h"
+#include "server_database_manager.h"
 
 #include "sample_libcrypto.h"   // sample_aes_gcm_128bit_key_t
 #include "config_macros.h"      // ULTRALIGH_SAMPLE
@@ -34,7 +35,7 @@
 
 using namespace httplib;
 
-int parse_query(uint32_t size, char* msg, char* pk, uint32_t* p_disk_index)
+int parse_query(char* msg, char* pk, char* db_command, uint32_t* p_index)
 {
     Timer t("parse_query");
 
@@ -59,14 +60,21 @@ int parse_query(uint32_t size, char* msg, char* pk, uint32_t* p_disk_index)
         if (i == 3) {
             char* invalid_char;
 
-            *p_disk_index = (uint32_t)strtoul(token, &invalid_char, 10);
+            *p_index = (uint32_t)strtoul(token, &invalid_char, 10);
 
             if(*invalid_char != 0) {
                 printf("\nInvalid query index message format.\n");
                 return -1;
             }
            
-            if(DEBUG) printf("disk_index: %u\n", *p_disk_index);
+            if(DEBUG) printf("disk_index: %u\n", *p_index); 
+        }
+
+        // Get data index
+        if (i == 5) {
+            strcpy(db_command, token);
+
+            if(DEBUG) printf("command: %s\n", db_command);
         }
     }
     return 0;
@@ -322,23 +330,49 @@ int server_query(bool secure, const Request& req, Response& res, sgx_enclave_id_
 
     // Get data index and pk
     char pk[9];
-    uint32_t disk_index;
-    if(parse_query(size, snd_msg, pk, &disk_index)) {
+    char db_command[MAX_DB_COMMAND_SIZE];
+    uint32_t index;
+    if(parse_query(snd_msg, pk, db_command, &index)) {
         free(snd_msg);
         return -1;
     }
     free(snd_msg);
     // printf("Index: %u\n", disk_index);
 
-    // Read data from BD/disk copy
-    char* data = (char *)malloc(MAX_DATA_SIZE*sizeof(char));
+    // Thread open dedicated database connection 
+    sqlite3 *db;
 
-    if(DEBUG) printf("Reading data from disk\n");
+    if(DEBUG) printf("Opening dabase\n"); 
 
-    if(file_read(disk_index, data)) {
-        free(data);
+    if(sqlite3_open(DATABASE_PATH, &db)) {
+       printf("Can't open database: %s\n", sqlite3_errmsg(db));
+       return -1;
+    } 
+
+    // Create arrays for datas and datas sizes 
+    char** datas = (char**)malloc(MAX_NUM_DATAS_QUERIED*sizeof(char*)); 
+    uint32_t* datas_sizes = (uint32_t*)malloc(MAX_NUM_DATAS_QUERIED*sizeof(uint32_t)); 
+    uint32_t filtered_data_count = 0;
+
+    // Query data from db
+    if(database_read(db, db_command, datas, datas_sizes, &filtered_data_count)) {
+        free_data_array(datas, datas_sizes, filtered_data_count);
+        sqlite3_close(db);
         return -1;
     }
+
+    // Close connection to database
+    sqlite3_close(db);
+
+    // Get data at index
+    if(index > filtered_data_count) {
+        free_data_array(datas, datas_sizes, filtered_data_count);
+        return -1;
+    }
+
+    char* data = (char*)malloc(MAX_DATA_SIZE*sizeof(char));
+    memcpy(data, datas[index], datas_sizes[index]);
+    free_data_array(datas, datas_sizes, filtered_data_count);
 
     // Separate parameters of stored data
     stored_data_t message; 
@@ -381,5 +415,6 @@ int server_query(bool secure, const Request& req, Response& res, sgx_enclave_id_
     free(response);
     free(enc_data);
     free(message.encrypted);
+
     return 0; 
 }

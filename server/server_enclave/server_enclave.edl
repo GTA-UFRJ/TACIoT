@@ -65,7 +65,6 @@ enclave {
                                                  uint32_t encrypted_aggregation_msg_size,
                                                  [in,count=1] sgx_sealed_data_t* sealed_key,
                                                  [in,count=data_count] uint8_t** encrypted_data_array,
-                                                 [in,count=data_count] uint32_t* encrypted_data_size_array,
                                                  uint32_t data_count,
                                                  [in,size=9] char* querier_pk,
                                                  uint32_t max_data_size,
@@ -76,6 +75,11 @@ enclave {
                                       [out,count=1] uint32_t* real_sealed_size,
                                       [in,count=data_size] uint8_t* data,
                                       uint32_t data_size);
+        public sgx_status_t get_db_request_s([in,size=encrypted_size] uint8_t* encrypted,
+                                            uint32_t encrypted_size,
+                                            uint32_t max_db_command_size,
+                                            [in,count=1] sgx_sealed_data_t* sealed_key,
+                                            [out,size=2048] char* db_command);
     };
     untrusted { 
         void ocall_print_secret([in,size=secret_size] uint8_t* secret,

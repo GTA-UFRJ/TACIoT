@@ -13,7 +13,7 @@
 #include HTTPLIB_PATH
 
 // Parse request string and fill fields
-int parse_request(uint32_t , char* , char*, uint32_t*);
+int parse_request(char* , char*);
 
 // Get register message sent by HTTP header
 int get_register_message(const httplib::Request& , char*, uint32_t* );

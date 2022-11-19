@@ -53,7 +53,7 @@ void ocall_print_aggregated(unsigned long number) {
 }
 
 // pk|72d41281|type|123456|size|62|encrypted|...
-int parse_request(uint32_t size, char* msg, iot_message_t* p_rcv_msg)
+int parse_request(char* msg, iot_message_t* p_rcv_msg)
 {
     Timer t("parse_request");
     
@@ -175,7 +175,7 @@ int server_publish(bool secure, const Request& req, Response& res, sgx_enclave_i
     // Server receives and separate parameters according to Ultrlight protocol
     // pk|72d41281|type|123456|size|62|encrypted|... 
     iot_message_t rcv_msg;
-    if(parse_request(size, snd_msg, &rcv_msg))
+    if(parse_request(snd_msg, &rcv_msg))
         return -1;
     free(snd_msg);
 

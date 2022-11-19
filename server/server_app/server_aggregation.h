@@ -28,7 +28,6 @@
 #include "sgx_uae_quote_ex.h"
 #include "sgx_tcrypto.h"
 
-// Read database disk copy file and get data for aggregation 
-int get_aggregation_datas(char*, uint8_t**, uint32_t*, uint32_t, uint32_t*);
+int sum_encrypted_data_i(uint8_t*, uint32_t, uint8_t*, uint8_t**, uint32_t, char*, uint8_t*, uint32_t* );
 
-int sum_encrypted_data_i(uint8_t*, uint32_t, uint8_t*, uint8_t**, uint32_t*, uint32_t, char*, uint8_t*, uint32_t* );
+int get_db_request_i(iot_message_t, uint8_t*, char*);

@@ -21,8 +21,10 @@ void print_usage() {
     printf("Usage examples:\n");
     printf("Example for publishing a data of type 123456, payload 250 and permission for 72d4128\n");
     printf("./client publish 123456 250 72d41281\n\n");
-    printf("Example for querying a data of index 0\n");
-    printf("./client query 0\n\n");
+    printf("Example for publishing a data of type 555555, payload \"SELECT * from TACIOT where type='123456'\" and permission for 72d4128\n");
+    printf("./client publish 555555 \"SELECT * from TACIOT where type='123456'\" 72d41281\n\n");
+    printf("Example for querying a data using SQL command \"SELECT * from TACIOT where type='123456'\" of index 0\n");
+    printf("./client query 0 \"SELECT * from TACIOT where type='123456'\"\n\n");
 }
 
 void free_client_data(client_data_t data) {
@@ -74,12 +76,12 @@ int main (int argc, char *argv[]) {
     }
     else if (!strcmp(argv[1],"query"))
     {
-        if(argc < 3) {
+        if(argc < 4) {
             printf("Too less arguments\n");
             print_usage();
             return -1;
         }
-        else if(argc > 3) {
+        else if(argc > 4) {
             printf("Too many arguments\n");
             print_usage();
             return -1;
@@ -94,14 +96,21 @@ int main (int argc, char *argv[]) {
             return -1;
         }
 
-        uint32_t queried_data_size;
-        uint8_t queried_data[queried_data_size];
+        char* command = (char*)malloc(strlen(argv[3])+1);
+        sprintf(command, "%s", argv[3]);
 
-        if(client_query(global_key, queried_data, index, &queried_data_size) != 0)
+        uint32_t queried_data_size;
+        uint8_t queried_data[MAX_DATA_SIZE];
+
+        if(client_query(global_key, queried_data, index, command, &queried_data_size) != 0) {
+            free(command);
             return -1;
+        }
 
         queried_data[queried_data_size] = 0;
         printf("Received: %s\n", (char*)queried_data);
+        
+        free(command);
     }
     else if (*argv[1] == 'r') {
         //send_key();

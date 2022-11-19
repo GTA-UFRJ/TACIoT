@@ -98,9 +98,11 @@ int main (int argc, char** argv)
         return 0;
     });
 
+/*
     svr.Get(R"(/benchmark/secret_code=123456)", [&](const Request& req, Response& res) {
         Timer::print_times();
     });
+*/
 
     svr.Get(R"(/register/size=(\d+)/(.*))", [&](const Request& req, Response& res) { 
 

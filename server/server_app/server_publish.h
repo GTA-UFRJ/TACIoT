@@ -11,7 +11,7 @@
 #include "server.h"
 
 // Parse request string and fill fields
-int parse_request(uint32_t , char*, iot_message_t* );
+int parse_request(char*, iot_message_t* );
 
 // Get publish message sent by HTTP header
 int get_publish_message(const httplib::Request& , char*, uint32_t* );

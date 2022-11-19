@@ -258,8 +258,7 @@ sgx_status_t sum_encrypted_data_s(
     uint8_t* encrypted_aggregation_msg,
     uint32_t encrypted_aggregation_msg_size,
     sgx_sealed_data_t* sealed_key,
-    uint8_t** encrypted_data_array,
-    uint32_t* encrypted_data_size_array,
+    uint8_t** data_array,
     uint32_t data_count,
     char* publisher_pk,
     uint32_t max_data_size,
@@ -325,6 +324,26 @@ sgx_status_t sum_encrypted_data_s(
     char payload[4];
     for (uint32_t index = 0; index < data_count; index++) {
 
+        // Separate parameters of stored data
+        char* msg = (char*)data_array[index];
+        uint32_t encrypted_size;
+        uint8_t* encrypted_data;
+
+        i = 0;
+        char* token = strtok_r(msg, "|", &msg);
+        while (token != NULL && i<6)
+        {
+            i++;
+            token = strtok_r(NULL, "|", &msg);
+
+            // Get encrypted message size
+            if (i == 5) 
+                encrypted_size = (uint32_t)strtoul(token,NULL,16);
+        }
+
+        encrypted_data = (uint8_t*)malloc(encrypted_size);
+        memcpy(encrypted_data, msg, encrypted_size);
+
         /* Encrypted data:      | MAC | IV | AES128(data)
          * Buffer size:           16    12   size(data)
          *
@@ -335,15 +354,15 @@ sgx_status_t sum_encrypted_data_s(
 
         // Decrypt data using key
         ret = sgx_rijndael128GCM_decrypt(&my_key,
-                                        encrypted_data_array[index] + 16 + 12,
-                                        encrypted_data_size_array[index] - 16 - 12,
+                                        encrypted_data + 16 + 12,
+                                        encrypted_size - 16 - 12,
                                         client_data,
-                                        encrypted_data_array[index] + 16,
+                                        encrypted_data + 16,
                                         12,
                                         NULL,
                                         0,
                                         (const sgx_aes_gcm_128bit_tag_t*)
-                                        (encrypted_data_array[index]));
+                                        (encrypted_data));
         if(ret != SGX_SUCCESS) {
             free(client_data);
             return ret;
@@ -351,9 +370,9 @@ sgx_status_t sum_encrypted_data_s(
 
         // Verify if publisher can access this data
         // pk|72d41281|type|weg_multimeter|payload|250|permission1|72d41281
-       char auxiliar_client_data [1+encrypted_data_size_array[index]*sizeof(char)];
-       memcpy(auxiliar_client_data, client_data, encrypted_data_size_array[index]);
-       auxiliar_client_data[encrypted_data_size_array[index]] = 0;
+       char auxiliar_client_data [1+encrypted_size*sizeof(char)];
+       memcpy(auxiliar_client_data, client_data, encrypted_size);
+       auxiliar_client_data[encrypted_size] = 0;
 
        unsigned long numeric_payload = 0;
 
@@ -415,7 +434,7 @@ sgx_status_t sum_encrypted_data_s(
         return ret;
     }
 
-    ocall_print_secret((uint8_t*)aggregation_data, aggregation_data_size);
+    // ocall_print_secret((uint8_t*)aggregation_data, aggregation_data_size);
 
     uint8_t aes_gcm_iv[12] = {0};
     memcpy(encrypted_result+16, aes_gcm_iv, 12);
@@ -462,4 +481,84 @@ sgx_status_t sealing_data(
     ocall_print_secret((uint8_t*)original, original_size);
 */
     return err;
+}
+
+
+sgx_status_t get_db_request_s(
+    uint8_t* encrypted,
+    uint32_t encrypted_size,
+    uint32_t max_db_command_size,
+    sgx_sealed_data_t* sealed_key,
+    char* db_command)
+{
+
+    sgx_status_t ret = SGX_SUCCESS;
+
+    // Unseal keys
+    uint8_t key[16] = {0}; 
+    uint32_t key_size = (uint32_t)(16*sizeof(uint8_t));
+    ret = sgx_unseal_data(sealed_key, NULL, NULL, &key[0], &key_size);
+    /*
+    if(ret != SGX_SUCCESS) {
+        uint8_t error = (uint8_t)ret;
+        ocall_print_secret(&error, 1);
+        return ret;
+    }*/
+
+    sgx_aes_gcm_128bit_key_t my_key;
+    memcpy(my_key, key, (size_t)key_size);
+    //ocall_print_secret(&key[0], 16);
+
+    /* 
+    * Decrypt data using key
+    *
+    * Encrypted data:      | MAC | IV | AES128(data)
+    * Buffer size:           16    12   size(data)
+    *
+    * MAC reference:         &data       :   &data+16
+    * IV reference:          &data+16    :   &data+16+12
+    * AES128(data) ref:      &data+12+16 : 
+    */
+    uint32_t publisher_data_size = encrypted_size - 16 - 12;
+    uint8_t* publisher_data = (uint8_t*)malloc((size_t)publisher_data_size);
+    memset(publisher_data, 0, publisher_data_size);
+   
+    ret = sgx_rijndael128GCM_decrypt(&my_key,
+                                    &encrypted[0] + 16 + 12,
+                                    publisher_data_size,
+                                    &publisher_data[0],
+                                    &encrypted[0] + 16,
+                                    12,
+                                    NULL,
+                                    0,
+                                    (const sgx_aes_gcm_128bit_tag_t*)
+                                    (&encrypted[0]));
+   // ocall_print_secret(&decMessage[0], dec_msg_len);
+    if(ret != SGX_SUCCESS) {
+        free(publisher_data);
+        return ret;
+    }
+    
+    // Pick DB command from data
+    int i = 0;
+    char* publisher_data_string = (char*)publisher_data;
+    char* token = strtok_r(publisher_data_string, "|", &publisher_data_string);
+    while (token != NULL) {
+        i++;
+        token = strtok_r(NULL, "|", &publisher_data_string);
+
+        if(i == 5) {
+            size_t db_command_size = strlen(token);
+            if(db_command_size > max_db_command_size) {
+                free(publisher_data);
+                ret = (sgx_status_t)0x5001;
+                return ret;
+            }
+            strncpy(db_command, token, db_command_size);
+        }
+    }
+
+    free(publisher_data);
+    
+    return ret;
 }
