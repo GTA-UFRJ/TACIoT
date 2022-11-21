@@ -10,7 +10,8 @@
 
 int sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
                          uint32_t encrypted_aggregation_msg_size,
-                         uint8_t* key, 
+                         uint8_t* publisher_key, 
+                         uint8_t* storage_key, 
                          uint8_t** data_array, 
                          uint32_t data_count, 
                          char* pk,
@@ -28,7 +29,7 @@ int sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
 
     uint32_t publisher_data_size = MAX_DATA_SIZE*sizeof(uint8_t);
     uint8_t* publisher_data = (uint8_t*)malloc((size_t)publisher_data_size);
-    ret  = decrypt_data(key, 
+    ret  = decrypt_data(publisher_key, 
                         encrypted_aggregation_msg, 
                         encrypted_aggregation_msg_size, 
                         publisher_data,
@@ -70,13 +71,13 @@ int sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
         get_stored_parameters((char*)(data_array[index]),&stored_data);
 
         // Decrypt data
-        ret = decrypt_data(key,
+        ret = decrypt_data(storage_key,
                            stored_data.encrypted,
                            stored_data.encrypted_size,
                            client_data,
                            &client_data_size);
         if(ret != SAMPLE_SUCCESS) {
-            printf("\n(ins) Error decrypting client data for aggregation\n");
+            printf("\n(ins) Error decrypting client data for aggregation: %d\n", (int)ret);
             free(client_data);
             return -1;
         }
@@ -90,10 +91,10 @@ int sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
        // Verify if publisher can access this data
         // pk|72d41281|type|weg_multimeter|payload|250|permission1|72d41281
        char auxiliar_client_data [1 + stored_data.encrypted_size * sizeof(char)];
-       memcpy(auxiliar_client_data, client_data, stored_data.encrypted_size);
-       auxiliar_client_data[stored_data.encrypted_size] = '\0';
+       memcpy(auxiliar_client_data, client_data, client_data_size);
+       auxiliar_client_data[client_data_size] = '\0';
 
-       char payload[4];
+       char payload[MAX_PAYLOAD_SIZE+1];
        unsigned long numeric_payload = 0;
 
        int permission_count = 0;
@@ -113,7 +114,13 @@ int sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
 
             // Save payload in memory
             if (i == 5) { 
-                memcpy(payload, token, 3);
+
+                unsigned j=0;
+                while(token[j] != '|' && j<MAX_PAYLOAD_SIZE) { 
+                    payload[j] = token[j];
+                    j++;
+                }
+                payload[j] = 0; 
 
                 char* invalid_char;
                 numeric_payload = strtoul(payload, &invalid_char, 10);
@@ -131,6 +138,7 @@ int sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
             total += numeric_payload;
 
         memset(client_data,0,MAX_DATA_SIZE*sizeof(uint8_t));
+        client_data_size = MAX_DATA_SIZE*sizeof(uint8_t);
     }
     free(client_data);
 
@@ -142,7 +150,8 @@ int sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
 
     if(DEBUG) printf("Aggreagtion data: %s\n", aggregation_data);
 
-    ret = encrypt_data(key,
+    // Encrypt aggregation data
+    ret = encrypt_data(storage_key,
                        result,
                        result_size,
                        (uint8_t*)aggregation_data,

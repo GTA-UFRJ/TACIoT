@@ -99,8 +99,8 @@ int main (int argc, char *argv[]) {
         char* command = (char*)malloc(strlen(argv[3])+1);
         sprintf(command, "%s", argv[3]);
 
-        uint32_t queried_data_size;
-        uint8_t queried_data[MAX_DATA_SIZE];
+        uint32_t queried_data_size = MAX_DATA_SIZE;
+        uint8_t queried_data[queried_data_size];
 
         if(client_query(global_key, queried_data, index, command, &queried_data_size) != 0) {
             free(command);

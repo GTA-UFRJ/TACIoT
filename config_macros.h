@@ -152,3 +152,7 @@
 #ifndef DATABASE_PATH
 #define DATABASE_PATH "/home/guiaraujo/TACIoT/database/taciot.db"
 #endif
+
+#ifndef MAX_PAYLOAD_SIZE
+#define MAX_PAYLOAD_SIZE 128
+#endif

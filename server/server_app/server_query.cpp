@@ -139,20 +139,20 @@ int enclave_get_response(stored_data_t stored,
         fclose(seal_file);
     }
 
-    // Get publisher sealed key
-    sprintf(seal_path, "%s/%s", SEALS_PATH, stored.pk);
+    // Get storage sealed key
+    sprintf(seal_path, "%s/storage_key", SEALS_PATH, stored.pk);
     seal_file = fopen(seal_path, "rb");
-    uint8_t* sealed_publisher_key = (uint8_t*)malloc(sealed_size);
+    uint8_t* sealed_storage_key = (uint8_t*)malloc(sealed_size);
 
-    if(DEBUG) printf("Reading key file from publisher: %s\n", seal_path);
+    if(DEBUG) printf("Reading storage key file: %s\n");
 
     if (seal_file == NULL) {
         printf("\nWarning: Failed to open the seal file \"%s\".\n", seal_path);
-        free(sealed_publisher_key);
+        free(sealed_storage_key);
         return -1;
     }
     else {
-        fread(sealed_publisher_key,1,sealed_size,seal_file);
+        fread(sealed_storage_key,1,sealed_size,seal_file);
         fclose(seal_file);
     }
 
@@ -165,7 +165,7 @@ int enclave_get_response(stored_data_t stored,
     sgx_status_t ecall_status;
     ret =retrieve_data(global_eid, &ecall_status,
         (sgx_sealed_data_t*)sealed_querier_key,
-        (sgx_sealed_data_t*)sealed_publisher_key,
+        (sgx_sealed_data_t*)sealed_storage_key,
         stored.encrypted,
         stored.encrypted_size,
         querier_pk,
@@ -184,12 +184,12 @@ int enclave_get_response(stored_data_t stored,
             printf("SGX error code %d, %d\n", (int)ret, (int)ecall_status);
 
         free(sealed_querier_key);
-        free(sealed_publisher_key);
+        free(sealed_storage_key);
         return -1;
     }
 
     free(sealed_querier_key);
-    free(sealed_publisher_key);
+    free(sealed_storage_key);
     return 0;
 }
 
@@ -220,41 +220,45 @@ int get_response(stored_data_t stored,
         fclose(file);
     }
 
-    // Get publisher sealed key
-    sprintf(path, "%s/%s_i", SEALS_PATH, stored.pk);
+    // Get storage key
+    sprintf(path, "%s/storage_key_i", SEALS_PATH);
     file = fopen(path, "rb");
-    uint8_t* publisher_key = (uint8_t*)malloc(size);
+    uint8_t* storage_key = (uint8_t*)malloc(size);
 
-    if(DEBUG) printf("Reading key file from publisher: %s\n", path);
+    if(DEBUG) printf("Reading storage key file: %s\n", path);
 
     if (file == NULL) {
         printf("\nWarning: Failed to open the seal file \"%s\".\n", path);
-        free(publisher_key);
+        free(storage_key);
         return -1;
     }
     else {
-        fread(publisher_key,1,size,file);
+        fread(storage_key,1,size,file);
         fclose(file);
     }
 
     //if(DEBUG) printf("Entering enclave\n");
 
     // Decrypt stored data
+    if(DEBUG) printf("Decrypting data: ");
+
     uint32_t plain_data_size = MAX_DATA_SIZE;
     uint8_t* plain_data = (uint8_t*)malloc(plain_data_size*sizeof(uint8_t));
     sample_status_t ret;
-    ret = decrypt_data(publisher_key,
+    ret = decrypt_data(storage_key,
                        stored.encrypted,
                        stored.encrypted_size,
                        plain_data,
                        &plain_data_size);
-    free(publisher_key);
+    free(storage_key);
     if(ret != SAMPLE_SUCCESS) {
         printf("\n(ins) Error decrypting data for query\n");
         free(querier_key);
         free(plain_data);
         return -1;
     }
+    plain_data[plain_data_size] = 0;
+    if(DEBUG) printf("%s\n", plain_data);
 
     // Verify access permissions
     // Get permissions and verify if querier is included
@@ -281,6 +285,8 @@ int get_response(stored_data_t stored,
     }
 
     // Encrypt data with querier key
+    if(DEBUG) printf("Encrypting data");
+
     uint32_t response_size = stored.encrypted_size;
     if (*access_allowed) { 
         ret = encrypt_data(querier_key,

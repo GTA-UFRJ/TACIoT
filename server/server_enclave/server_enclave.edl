@@ -48,7 +48,8 @@ enclave {
     include "sgx_tseal.h"
 
     trusted {
-        public sgx_status_t process_data([in,count=1] sgx_sealed_data_t* sealed_key,
+        public sgx_status_t process_data([in,count=1] sgx_sealed_data_t* publisher_sealed_key,
+                                         [in,count=1] sgx_sealed_data_t* storage_sealed_key,
                                          [in,size=encrypted_data_size] uint8_t* encrypted_data,
                                          uint32_t encrypted_data_size,
                                          [out,size=buffer_max_size] uint8_t* processed_result,
@@ -63,7 +64,8 @@ enclave {
                                           [out,count=1] uint8_t* accepted);     
         public sgx_status_t sum_encrypted_data_s([in,count=encrypted_aggregation_msg_size] uint8_t* encrypted_aggregation_msg,
                                                  uint32_t encrypted_aggregation_msg_size,
-                                                 [in,count=1] sgx_sealed_data_t* sealed_key,
+                                                 [in,count=1] sgx_sealed_data_t* publisher_sealed_key,
+                                                 [in,count=1] sgx_sealed_data_t* storage_sealed_key,
                                                  [in,count=data_count] uint8_t** encrypted_data_array,
                                                  uint32_t data_count,
                                                  [in,size=9] char* querier_pk,
