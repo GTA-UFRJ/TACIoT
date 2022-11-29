@@ -57,6 +57,7 @@ uint8_t g_secret[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 sgx_status_t process_data(
     sgx_sealed_data_t* publisher_sealed_key,
     sgx_sealed_data_t* storage_sealed_key,
+    char* pk,
     uint8_t* encrypted_data,
     uint32_t encrypted_data_size,
     uint8_t*  processed_result,
@@ -123,6 +124,12 @@ sgx_status_t process_data(
     if(ret != SGX_SUCCESS) {
         return ret;
     }
+
+    // Verify if pks are equals
+    if(memcmp(pk, decMessage+3, 8)){
+        ret = (sgx_status_t)0x5001;
+        return ret;
+    }
     
     // Encrypt data using key
     *processed_result_size = (uint32_t)(16 + 12 + sizeof(uint8_t)*(dec_msg_len));
@@ -155,12 +162,17 @@ sgx_status_t process_data(
 sgx_status_t retrieve_data(
     sgx_sealed_data_t* sealed_querier_key,
     sgx_sealed_data_t* sealed_storage_key,
-    uint8_t* original_data,
+    uint8_t* encrypted_pk,
+    uint8_t* encrypted_data,
     uint32_t encrypted_data_size,
     char* querier_pk,
     uint8_t* result,
     uint8_t* accepted)
 {
+    // Verify if nonce is fresh
+    // TODO
+
+    *accepted = 0;
 
     sgx_status_t ret = SGX_SUCCESS;
 
@@ -190,6 +202,39 @@ sgx_status_t retrieve_data(
     memcpy(server_key, storage_key, (size_t)key_size);
 
     /* 
+    * Decrypt pk
+    *
+    * Encrypted data:      | MAC | IV | AES128(data)
+    * Buffer size:           16    12   size(data)
+    *
+    * MAC reference:         &data       :   &data+16
+    * IV reference:          &data+16    :   &data+16+12
+    * AES128(data) ref:      &data+12+16 : 
+    */
+    uint32_t dec_pk_size = 8; 
+    uint8_t dec_pk [dec_pk_size+1];
+    memset(dec_pk,0,dec_pk_size+1);;
+    ret = sgx_rijndael128GCM_decrypt(&my_key,
+                                    &encrypted_pk[0] + 16 + 12,
+                                    dec_pk_size,
+                                    &dec_pk[0],
+                                    &encrypted_pk[0] + 16,
+                                    12,
+                                    NULL,
+                                    0,
+                                    (const sgx_aes_gcm_128bit_tag_t*)
+                                    (&encrypted_pk[0]));
+    if(ret != SGX_SUCCESS) {
+        return ret;
+    }
+
+    // Verify if pks are equals
+    if(memcmp(querier_pk, dec_pk, 8)){
+        ret = (sgx_status_t)0x5001;
+        return ret;
+    }
+
+    /* 
     * Decrypt data received from DB/disk copy
     *
     * Encrypted data:      | MAC | IV | AES128(data)
@@ -203,15 +248,15 @@ sgx_status_t retrieve_data(
     uint8_t decMessage [dec_msg_len];
     memset(decMessage,0,dec_msg_len);;
     ret = sgx_rijndael128GCM_decrypt(&server_key,
-                                    &original_data[0] + 16 + 12,
+                                    &encrypted_data[0] + 16 + 12,
                                     dec_msg_len,
                                     &decMessage[0],
-                                    &original_data[0] + 16,
+                                    &encrypted_data[0] + 16,
                                     12,
                                     NULL,
                                     0,
                                     (const sgx_aes_gcm_128bit_tag_t*)
-                                    (&original_data[0]));
+                                    (&encrypted_data[0]));
     if(ret != SGX_SUCCESS) {
         return ret;
     }
@@ -528,6 +573,7 @@ sgx_status_t sealing_data(
 sgx_status_t get_db_request_s(
     uint8_t* encrypted,
     uint32_t encrypted_size,
+    char* pk,
     uint32_t max_db_command_size,
     sgx_sealed_data_t* sealed_key,
     char* db_command)
@@ -579,7 +625,14 @@ sgx_status_t get_db_request_s(
         free(publisher_data);
         return ret;
     }
-    
+
+    // Verify if pks are equals
+    if(memcmp(pk, publisher_data+3, 8)){
+        free(publisher_data);
+        ret = (sgx_status_t)0x5001;
+        return ret;
+    }
+
     // Pick DB command from data
     int i = 0;
     char* publisher_data_string = (char*)publisher_data;
@@ -603,3 +656,122 @@ sgx_status_t get_db_request_s(
     
     return ret;
 }
+
+
+sgx_status_t revoke_data(
+    sgx_sealed_data_t* sealed_revoker_key,
+    sgx_sealed_data_t* sealed_storage_key,
+    uint8_t* encrypted_pk,
+    uint8_t* data,
+    uint32_t encrypted_data_size, 
+    char* pk,
+    uint8_t* accepted)
+{
+
+    // Verify if nonce is fresh
+    // TODO
+    
+    *accepted = 0;
+
+    sgx_status_t ret = SGX_SUCCESS;
+
+    // Unseal keys
+    uint32_t key_size = (uint32_t)(16*sizeof(uint8_t));
+
+    uint8_t revoker_key[16] = {0}; 
+    ret = sgx_unseal_data(sealed_revoker_key, NULL, NULL, &revoker_key[0], &key_size);
+    /*if(ret != SGX_SUCCESS) {
+        uint8_t error = (uint8_t)ret;
+        ocall_print_secret(&error, 1);
+        return ret;
+    }*/
+
+    uint8_t storage_key[16] = {0}; 
+    ret = sgx_unseal_data(sealed_storage_key, NULL, NULL, &storage_key[0], &key_size);
+    /*if(ret != SGX_SUCCESS) {
+        uint8_t error = (uint8_t)ret;
+        ocall_print_secret(&error, 1);
+        return ret;
+    }*/
+    
+    sgx_aes_gcm_128bit_key_t my_key;
+    memcpy(my_key, revoker_key, (size_t)key_size);
+    
+    sgx_aes_gcm_128bit_key_t server_key;
+    memcpy(server_key, storage_key, (size_t)key_size);
+
+    /* 
+    * Decrypt pk
+    *
+    * Encrypted data:      | MAC | IV | AES128(data)
+    * Buffer size:           16    12   size(data)
+    *
+    * MAC reference:         &data       :   &data+16
+    * IV reference:          &data+16    :   &data+16+12
+    * AES128(data) ref:      &data+12+16 : 
+    */
+    uint32_t dec_pk_size = 8; 
+    uint8_t dec_pk [dec_pk_size+1];
+    memset(dec_pk,0,dec_pk_size+1);;
+    ret = sgx_rijndael128GCM_decrypt(&my_key,
+                                    &encrypted_pk[0] + 16 + 12,
+                                    dec_pk_size,
+                                    &dec_pk[0],
+                                    &encrypted_pk[0] + 16,
+                                    12,
+                                    NULL,
+                                    0,
+                                    (const sgx_aes_gcm_128bit_tag_t*)
+                                    (&encrypted_pk[0]));
+    if(ret != SGX_SUCCESS) {
+        return ret;
+    }
+
+    // Verify if pks are equals
+    if(memcmp(pk, dec_pk, 8)){
+        ret = (sgx_status_t)0x5001;
+        return ret;
+    }
+
+    /* 
+    * Decrypt data received from DB/disk copy
+    *
+    * Encrypted data:      | MAC | IV | AES128(data)
+    * Buffer size:           16    12   size(data)
+    *
+    * MAC reference:         &data       :   &data+16
+    * IV reference:          &data+16    :   &data+16+12
+    * AES128(data) ref:      &data+12+16 : 
+    */
+    uint32_t dec_msg_len = encrypted_data_size-12-16; 
+    uint8_t decMessage [dec_msg_len];
+    memset(decMessage,0,dec_msg_len);;
+    ret = sgx_rijndael128GCM_decrypt(&server_key,
+                                    &data[0] + 16 + 12,
+                                    dec_msg_len,
+                                    &decMessage[0],
+                                    &data[0] + 16,
+                                    12,
+                                    NULL,
+                                    0,
+                                    (const sgx_aes_gcm_128bit_tag_t*)
+                                    (&data[0]));
+    if(ret != SGX_SUCCESS) {
+        return ret;
+    }
+
+    // Get permissions and verify if querier is included
+    // pk|72d41281|type|123456|payload|250|permission1|72d41281
+    
+    // Verify if client is the owner of the data
+    if(memcmp(decMessage+3, pk, 8)) {
+        ret = (sgx_status_t)0x5001;
+        return ret;
+    }
+
+    // Allow deletion
+    *accepted = 1; 
+
+    return ret;
+}
+

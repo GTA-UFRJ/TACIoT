@@ -45,7 +45,7 @@ To test the server data publishing and quering service, run:
 You can use *s* for a secure server (using SGX enclaves) or *i* for an insecure server.
 Then, in other configured machine/environment, run:
 ```
-./client publish 123456 250 72d41281
+./Client publish 123456 250 72d41281
 ```
 This command publishes a data of type 123456, payload 250 and allow permission for client with ID 72d4128.
 

@@ -95,6 +95,7 @@ Server_Cpp_Files := server/server_app/server.cpp \
 					server/server_app/server_publish.cpp \
 					server/server_app/server_register.cpp \
 					server/server_app/server_query.cpp \
+					server/server_app/server_revoke.cpp \
 					server/server_app/server_processing.cpp \
 					server/server_app/server_disk_manager.cpp \
 					server/server_app/server_aggregation.cpp \
@@ -102,6 +103,7 @@ Server_Cpp_Files := server/server_app/server.cpp \
 					utils/utils.cpp \
 					utils/encryption.cpp \
 					utils/utils_sgx.cpp \
+					utils/errors.cpp \
 					benchmark/timer.cpp
 
 Server_Include_Paths := -Iutils \
@@ -155,8 +157,10 @@ Server_Name := Server
 Client_Cpp_Files := client/cli.cpp \
 					client/client_publish.cpp \
 					client/client_query.cpp \
+					client/client_revoke.cpp \
 					utils/utils.cpp \
 					utils/encryption.cpp \
+					utils/errors.cpp \
 					benchmark/timer.cpp
 
 Client_Include_Paths := -I. \

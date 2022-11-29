@@ -7,10 +7,11 @@
 #include "server_disk_manager.h"
 #include <mutex>
 #include <unistd.h>
+#include "errors.h"
  
 std::mutex thread_sync;
 
-int get_stored_parameters(char* msg, stored_data_t* p_stored)
+server_error_t get_stored_parameters(char* msg, stored_data_t* p_stored)
 {
     Timer t("get_stored_parameters");
 
@@ -54,7 +55,7 @@ int get_stored_parameters(char* msg, stored_data_t* p_stored)
     p_stored->encrypted[p_stored->encrypted_size] = 0;
     //debug_print_encrypted((size_t)(stored.encrypted_size), stored.encrypted);
 
-    return 0;
+    return OK;
 }
 
 bool verify_file_existance(char* filename) 

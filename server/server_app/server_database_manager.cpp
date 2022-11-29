@@ -3,6 +3,7 @@
 #include <string.h>
 #include "config_macros.h"
 #include "utils.h"
+#include "timer.h"
 
 // COMPILATION: g++ -c server/server_app/server_database_manager.cpp -o server/server_app/server_database_manager.o
 // LINKEDITON: g++ server/server_app/server_database_manager.o -l sqlite3 -o server/server_app/server_database_manager
@@ -72,9 +73,11 @@ static int callback_query(void* received_from_exec, int num_columns, char** colu
     return 0;
 }
 
-int database_write(sqlite3* db, iot_message_t rcv_msg) {
-    
-    if(DEBUG) printf("Writing to dabase\n"); 
+server_error_t database_write(sqlite3* db, iot_message_t rcv_msg)
+{
+    Timer t("database_write");
+
+    if(DEBUG) printf("\nWriting to dabase\n"); 
 
     // Format encrypted message for publication
     char auxiliar[4];
@@ -105,21 +108,71 @@ int database_write(sqlite3* db, iot_message_t rcv_msg) {
         sqlite3_free(error_message);
         
         sqlite3_close(db);
-        return -1;
+        return print_error_message(DB_INSERT_EXECUTION_ERROR);
     }
 
-    return 0;
+    return OK;
 }
 
-int database_read(sqlite3* db, char* command, char** datas, uint32_t* datas_sizes, uint32_t* data_count) {
+server_error_t database_delete(sqlite3* db, stored_data_t stored_message) 
+{
+    Timer t("database_delete");
+    
+    char* encrypted = (char*)malloc(3*stored_message.encrypted_size+1);
+    char auxiliar[4];
+    auxiliar[3] = 0;
+    for(unsigned i=0; i<stored_message.encrypted_size; i++) {
+        sprintf(auxiliar, "%02x-", stored_message.encrypted[i]);
+        memcpy(encrypted+3*i, auxiliar, 3);
+    }
+    encrypted[3*stored_message.encrypted_size] = 0;
+
+    // Build DB command for deletion (TYPE,PK,SIZE,ENCRYPTED)
+    char* delete_sql_statement = (char*)malloc(MAX_DATA_SIZE+100);
+    sprintf(delete_sql_statement, 
+    "DELETE from TACIOT where TYPE='%s' and PK='%s' and SIZE=%u and ENCRYPTED='%s'",
+    stored_message.type, stored_message.pk, stored_message.encrypted_size, encrypted);
+    free(encrypted);
+
+    if(DEBUG) printf("SQL delete statement: %s\n", delete_sql_statement); 
+
+    // Execute SQL statetment for inserting data (without callback function)
+    char *error_message = 0;
+    int ret = sqlite3_exec(db, delete_sql_statement, NULL, NULL, &error_message);
+    free(delete_sql_statement);
+    
+    if(ret != SQLITE_OK ){
+        printf("SQL error: %s\n", error_message);
+
+        // Error message is allocated inside sqlite3_exec call IF ther were an error
+        sqlite3_free(error_message);
+        
+        sqlite3_close(db);
+        return DB_DELETE_EXECUTION_ERROR;
+    }
+
+    return OK;
+}
+
+server_error_t database_read(sqlite3* db, char* command, char** datas, uint32_t* datas_sizes, uint32_t* data_count) 
+{
+    Timer t("database_read");
    
-    if(DEBUG) printf("Reading from database\n");
+    if(DEBUG) printf("\nReading from database\n");
 
     if(DEBUG) printf("SQL read statement: %s\n", command); 
 
-    // Replace "_" in command by SPACE character
-    for(unsigned i=0; i<strlen(command); i++) 
+    // Replace "_" in command by SPACE character and panic if it finds a ";"
+    for(unsigned i=0; i<strlen(command); i++) {
         command[i] = (command[i] == '_') ? ' ' : command[i];
+        if(command[i] == ';')
+            return print_error_message(INVALID_DB_STATEMENT_ERROR);
+    }
+
+    // Confirm if it is a SELECT command
+    char expected_command[7] = "SELECT";
+    if(memcmp(command, expected_command, 6))
+        return print_error_message(INVALID_DB_STATEMENT_ERROR);
     
     callback_arg_t passed_to_callback;
 
@@ -140,7 +193,8 @@ int database_read(sqlite3* db, char* command, char** datas, uint32_t* datas_size
         
         sqlite3_close(db);
         free_callback_arg(passed_to_callback);
-        return -1;
+
+        return print_error_message(DB_SELECT_EXECUTION_ERROR);
     }
 
     // Copy datas returned from callback by reference (suposing that datas is allocated)
@@ -153,47 +207,5 @@ int database_read(sqlite3* db, char* command, char** datas, uint32_t* datas_size
         memcpy(datas[i], (passed_to_callback.datas)[i], data_size);
     }
 
-    return 0;
+    return OK;
 }
-/*
-int main () {
-
-    // Testing publication
-    iot_message_t msg;
-    sprintf(msg.type, "555555");
-    sprintf(msg.pk, "72d41281");
-    msg.encrypted_size = 10;
-    msg.encrypted = (uint8_t*)malloc(msg.encrypted_size);
-    uint8_t enc[10] = {0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01};
-    memcpy(msg.encrypted, enc, msg.encrypted_size);
-
-    sqlite3 *db;
-    int ret = sqlite3_open("./database/taciot.db", &db);
-    if(ret) {
-       printf("Can't open database: %s\n", sqlite3_errmsg(db));
-       return -1;
-    } else {
-       printf("Opened database successfully\n");
-    }
-
-    database_write(db, msg);
-
-    // Testign query
-    char** datas = (char**)malloc(2048*sizeof(char*));
-    uint32_t* datas_sizes = (uint32_t*)malloc(2048*sizeof(uint32_t));
-    uint32_t data_count = 0;
-    char command[64] = "SELECT * from TACIOT where type=\"555555\"";
-    database_read(db, command, datas, datas_sizes, &data_count);
-
-    printf("data_count = %u\n", data_count);
-    printf("datas_sizes[0] = %u\n", datas_sizes[0]);
-    printf("datas[0] = %s\n", datas[0]);
-    debug_print_encrypted((size_t)datas_sizes[0]-44, (uint8_t*)(datas[0]+44));
-
-    free_data_array(datas, datas_sizes, data_count);
-
-    sqlite3_close(db);
-
-    return 0;
-}
-*/

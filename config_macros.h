@@ -1,12 +1,7 @@
 /*
- * Grupo de Teleinformatica e Automacao (GTA, Coppe, UFRJ)
- * Autor: Guilherme Araujo Thomaz
- * Data da ultima modificacao: 30/11/2021
- * Descricao: flags de configuracao
- * 
- * Este codigo foi modificado seguindo as permissoes da licenca
- * da Intel Corporation, apresentadas a seguir
- *
+ * Teleinformatic and Automation Group (GTA, Coppe, UFRJ)
+ * Author: Guilherme Araujo Thomaz
+ * Descripton: configuration flags
  */
 
 #ifndef DEBUG 

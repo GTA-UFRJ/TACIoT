@@ -50,14 +50,16 @@ enclave {
     trusted {
         public sgx_status_t process_data([in,count=1] sgx_sealed_data_t* publisher_sealed_key,
                                          [in,count=1] sgx_sealed_data_t* storage_sealed_key,
+                                         [in,count=9] char* pk,
                                          [in,size=encrypted_data_size] uint8_t* encrypted_data,
                                          uint32_t encrypted_data_size,
                                          [out,size=buffer_max_size] uint8_t* processed_result,
                                          uint32_t buffer_max_size,
                                          [out,count=1] uint32_t* processed_result_size);      
         public sgx_status_t retrieve_data([in,count=1] sgx_sealed_data_t* sealed_querier_key,
-                                          [in,count=1] sgx_sealed_data_t* sealed_publisher_key,
-                                          [in,size=encrypted_data_size] uint8_t* original_data,
+                                          [in,count=1] sgx_sealed_data_t* sealed_storage_key,
+                                          [in,count=36] uint8_t* encrypted_pk,
+                                          [in,size=encrypted_data_size] uint8_t* encrypted_data,
                                           uint32_t encrypted_data_size,
                                           [in,size=9] char* querier_pk,
                                           [out,size=encrypted_data_size] uint8_t* result,
@@ -79,9 +81,17 @@ enclave {
                                       uint32_t data_size);
         public sgx_status_t get_db_request_s([in,size=encrypted_size] uint8_t* encrypted,
                                             uint32_t encrypted_size,
+                                            [in,count=9] char* pk,
                                             uint32_t max_db_command_size,
                                             [in,count=1] sgx_sealed_data_t* sealed_key,
                                             [out,size=2048] char* db_command);
+        public sgx_status_t revoke_data([in,count=1] sgx_sealed_data_t* sealed_revoker_key,
+                                        [in,count=1] sgx_sealed_data_t* sealed_storage_key,
+                                        [in,size=36] uint8_t* encrypted_pk,
+                                        [in,size=encrypted_data_size] uint8_t* data,
+                                        uint32_t encrypted_data_size,
+                                        [in,size=9] char* pk,
+                                        [out,count=1] uint8_t* accepted);     
     };
     untrusted { 
         void ocall_print_secret([in,size=secret_size] uint8_t* secret,

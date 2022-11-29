@@ -34,7 +34,7 @@ static const sample_ec_pub_t g_sp_pub_key = {
     }
 };
 
-// Structure of the message sent by acess point (used by teh server)
+// Structures of the message sent by acess point (used by teh server)
 typedef struct iot_message_t
 {
     char pk[9];
@@ -42,6 +42,15 @@ typedef struct iot_message_t
     uint32_t encrypted_size;
     uint8_t* encrypted;
 } iot_message_t;
+
+typedef struct access_message_t
+{
+    char pk[9];
+    uint32_t index;
+    uint32_t command_size;
+    char* command;
+    uint8_t encrypted[8+16+12];
+} access_message_t;
 
 // Register shared key (not used, only for testes)
 const sample_aes_gcm_128bit_key_t sha_key[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};

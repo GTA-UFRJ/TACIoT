@@ -7,8 +7,9 @@
 #include "server_aggregation.h"
 #include "server_disk_manager.h"
 #include "server_database_manager.h"
+#include "errors.h"
 
-int sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
+server_error_t sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
                          uint32_t encrypted_aggregation_msg_size,
                          uint8_t* publisher_key, 
                          uint8_t* storage_key, 
@@ -20,33 +21,34 @@ int sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
 {
 
     Timer t("sum_encrypted_data_i");
+    server_error_t ret = OK;
 
-    sample_status_t ret = SAMPLE_SUCCESS;
+    sample_status_t encryption_ret = SAMPLE_SUCCESS;
 
     // Decrypt publisher data
 
-    if(DEBUG) printf("Decrypting message: ");
+    if(DEBUG) printf("\nDecrypting message\n");
 
-    uint32_t publisher_data_size = MAX_DATA_SIZE*sizeof(uint8_t);
+    uint32_t publisher_data_size = MAX_DATA_SIZE;
     uint8_t* publisher_data = (uint8_t*)malloc((size_t)publisher_data_size);
-    ret  = decrypt_data(publisher_key, 
+    encryption_ret  = decrypt_data(publisher_key, 
                         encrypted_aggregation_msg, 
                         encrypted_aggregation_msg_size, 
                         publisher_data,
                         &publisher_data_size);
-    if(ret != SAMPLE_SUCCESS) {
-        printf("\n(ins) Error decrypting publisher data for aggregation\n");
+    if(encryption_ret != SAMPLE_SUCCESS) {
         free(publisher_data);
-        return -1;
+        return print_error_message(MESSAGE_DECRYPTION_ERROR);
     }
 
     if(DEBUG) printf("%s\n", (char*)publisher_data);
 
     // Pick publisher access permissions
     // pk|72d41281|type|weg_multimeter|payload|250|permission1|72d41281
-    char access_permissions [1+publisher_data_size*sizeof(char)];
+    char* access_permissions = (char*)malloc(1+publisher_data_size);
     memcpy(access_permissions, publisher_data, publisher_data_size);
     access_permissions[publisher_data_size] = '\0';
+    free(publisher_data);
     
     int i = 0;
     char* p_access_permissions = &access_permissions[0];
@@ -55,13 +57,12 @@ int sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
         token = strtok_r(NULL, "|", &p_access_permissions);
         i++;
     }
-    
-    free(publisher_data);
-    uint32_t client_data_size = MAX_DATA_SIZE*sizeof(uint8_t);
+
+    uint32_t client_data_size = MAX_DATA_SIZE;
     uint8_t* client_data = (uint8_t*)malloc((size_t)client_data_size);
 
     // Iterate over data array
-    if(DEBUG) printf("Decrypting collected datas\n");
+    if(DEBUG) printf("\nDecrypting collected datas\n");
 
     unsigned long total = 0;
     for (uint32_t index = 0; index < data_count; index++) {
@@ -71,15 +72,15 @@ int sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
         get_stored_parameters((char*)(data_array[index]),&stored_data);
 
         // Decrypt data
-        ret = decrypt_data(storage_key,
+        encryption_ret = decrypt_data(storage_key,
                            stored_data.encrypted,
                            stored_data.encrypted_size,
                            client_data,
                            &client_data_size);
-        if(ret != SAMPLE_SUCCESS) {
-            printf("\n(ins) Error decrypting client data for aggregation: %d\n", (int)ret);
+        if(encryption_ret != SAMPLE_SUCCESS) {
             free(client_data);
-            return -1;
+            free(access_permissions);
+            return print_error_message(DATA_DECRYPTION_ERROR);
         }
 
         /*
@@ -126,9 +127,9 @@ int sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
                 numeric_payload = strtoul(payload, &invalid_char, 10);
 
                 if(payload != 0 && *invalid_char != 0) {
-                    printf("\n(ins) Invalid plaintext client data format.\n");
                     free(client_data);
-                    return -1;
+                    free(access_permissions);
+                    return print_error_message(INVALID_PAYLOAD_ERROR);
                 }
             }
         }
@@ -147,52 +148,59 @@ int sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
     char* aggregation_data = (char*)malloc((size_t)*result_size);
     sprintf(aggregation_data, "pk|%s|type|555555|payload|%lu|%s", (char*)pk, total, p_access_permissions);
     size_t aggregation_data_size = strlen(aggregation_data);
+    free(access_permissions);
 
     if(DEBUG) printf("Aggreagtion data: %s\n", aggregation_data);
 
+    if(DEBUG) printf("\nEncrypting aggreagtion data\n");
+
     // Encrypt aggregation data
-    ret = encrypt_data(storage_key,
+    encryption_ret = encrypt_data(storage_key,
                        result,
                        result_size,
                        (uint8_t*)aggregation_data,
                        (uint32_t)aggregation_data_size);
-    if(ret != SAMPLE_SUCCESS) {
-        printf("\n(ins) Error encrypting data for aggregation\n");
-        free(client_data);
-        free(aggregation_data);
-        return -1;
-    }
     free(aggregation_data);
+    if(encryption_ret != SAMPLE_SUCCESS) 
+        return print_error_message(DATA_ENCRYPTION_ERROR);
 
     //quick_decrypt_debug(key, result, *result_size);
-    return 0;
+    return OK;
 }
 
-int get_db_request_i(iot_message_t rcv_msg, uint8_t* key, char* db_command) {
+server_error_t get_db_request_i(iot_message_t rcv_msg, uint8_t* key, char* db_command) {
+
+    Timer t("get_db_request_i");
 
     // Decrypt publisher data to get the DB request
-    if(DEBUG) printf("\nDecrypting publisher message: ");
+    if(DEBUG) printf("\nDecrypting publisher message\n");
 
-    uint32_t publisher_data_size = MAX_DATA_SIZE*sizeof(uint8_t);
+    uint32_t publisher_data_size = MAX_DATA_SIZE;
     uint8_t* publisher_data = (uint8_t*)malloc((size_t)publisher_data_size+1);
 
-    sample_status_t ret = SAMPLE_SUCCESS;
-    ret  = decrypt_data(key, 
+    sample_status_t decrypt_ret = SAMPLE_SUCCESS;
+    decrypt_ret  = decrypt_data(key, 
                         rcv_msg.encrypted, 
                         rcv_msg.encrypted_size, 
                         publisher_data,
                         &publisher_data_size);
-    if(ret != SAMPLE_SUCCESS) {
-        printf("\n(ins) Error decrypting publisher data for aggregation\n");
+    if(decrypt_ret != SAMPLE_SUCCESS) {
         free(publisher_data);
-        return -1;
+        return print_error_message(MESSAGE_DECRYPTION_ERROR);
+    }
+
+    // Verify if the client owns the key
+    // Verify if pks are equals
+    if(strncmp(rcv_msg.pk, (char*)publisher_data+3, 8)){
+        free(publisher_data);
+        return print_error_message(AUTHENTICATION_ERROR);
     }
 
     publisher_data[publisher_data_size] = 0;
     if(DEBUG) printf("%s\n", (char*)publisher_data);
 
     // Get DB request
-    if(DEBUG) printf("Separating DB request embeded inside decrypted message: ");
+    if(DEBUG) printf("\nSeparating DB request embeded inside decrypted message\n");
 
     int i = 0;
     char* publisher_data_string = (char*)publisher_data;
@@ -205,9 +213,9 @@ int get_db_request_i(iot_message_t rcv_msg, uint8_t* key, char* db_command) {
             strcpy(db_command, token);
     }
     
-    if(DEBUG) printf("%s\n\n", db_command);
+    if(DEBUG) printf("DB command: %s\n", db_command);
 
     free(publisher_data);
 
-    return 0;
+    return OK;
 }

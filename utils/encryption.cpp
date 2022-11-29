@@ -11,6 +11,7 @@
 #include <chrono>
 #include <string.h>
 #include "timer.h"
+#include "utils.h"
 
 sample_status_t encrypt_data (
     uint8_t* key,
@@ -93,6 +94,10 @@ sample_status_t decrypt_data (
     // Clean result buffer
     memset(plain_data,0,*plain_data_size);
 
+    // MAC backup
+    uint8_t mac[SAMPLE_AESGCM_MAC_SIZE];
+    memcpy(mac, enc_data, SAMPLE_AESGCM_MAC_SIZE);
+
     // Client decrypt data with shared key
     ret = sample_rijndael128GCM_encrypt(
         *p_formatted_key,                                               // 128 bits key = 16 bytes key
@@ -100,7 +105,7 @@ sample_status_t decrypt_data (
         *plain_data_size,                                               // Origin + origin size
         plain_data,                                                     // AES128(origin)
         enc_data + SAMPLE_AESGCM_MAC_SIZE, SAMPLE_AESGCM_IV_SIZE,       // IV + IV size
-        NULL, 0, (sample_aes_gcm_128bit_tag_t *) (enc_data));           // MAC 
+        NULL, 0, (sample_aes_gcm_128bit_tag_t *) (mac));           // MAC 
 
     return ret;
 }

@@ -12,6 +12,7 @@
 #include <chrono>
 #include <thread>
 #include "timer.h"
+#include "errors.h"
 
 #include "client_publish.h"
 
@@ -38,8 +39,9 @@ int send_data_for_publication(char* pk, char* type, uint8_t* enc_data, uint32_t 
     snd_msg[snd_msg_size] = '\0';
 
     // Build HTTP publication message
-    char http_message[URL_MAX_SIZE];
+    char* http_message = (char*)malloc(URL_MAX_SIZE);
     sprintf(http_message, "/publish/size=%d/%s", (int)snd_msg_size, snd_msg);
+    free(snd_msg);
 
     // Send HTTP publication message
     httplib::Error err = httplib::Error::Success;
@@ -48,24 +50,40 @@ int send_data_for_publication(char* pk, char* type, uint8_t* enc_data, uint32_t 
 
     {
         Timer t("communication");
-        printf("Sent %s\n",http_message);
-        if (auto res = cli.Get(http_message)) {
-            
+
+        printf("Sent %s\n", http_message);
+        auto res = cli.Get(http_message);
+        free(http_message);
+        if (res) {
+
             if (res->status != 200) {
-                printf("Server responded with error code: %d\n", (int)res->status);
-                free(snd_msg);
-                return -1;
+                printf("Error code: %d\n", (int)res->status);
+                return (int)print_error_message(HTTP_RESPONSE_ERROR);
             }
-            printf("Received: ack\n");
+
+            char* http_response = (char*)malloc(URL_MAX_SIZE);
+            sprintf(http_response,"%s",res->body.c_str());
+            if(!strcmp(http_response, "0")) {
+                printf("Received ack\n");
+                free(http_response);
+                return 0;
+            }
+
+            char* invalid_char;
+            server_error_t error = (server_error_t)strtoul(http_response, &invalid_char, 10);
+            if(*invalid_char != 0) {
+                free(http_response);
+                return (int)print_error_message(INVALID_ERROR_CODE_FORMAT_ERROR);
+            }
+            free(http_response);
+            return (int)print_error_message(error);
 
         } else {
             err = res.error();
-            printf("Failed HTTP message: error %d\n", (int)err);
-            free(snd_msg);
-            return -1;
+            printf("Error %d\n", (int)err);
+            return (int)print_error_message(HTTP_SEND_ERROR);
         }
     }
-    free(snd_msg);
 
     return 0;
 }
@@ -83,20 +101,16 @@ int client_publish(uint8_t* key, client_data_t data)
     uint8_t* enc_data = (uint8_t *) malloc(enc_data_size*sizeof(uint8_t));
 
     sample_status_t ret = encrypt_data(key, enc_data, &enc_data_size, (uint8_t*)formatted_data, formatted_data_size);
-    if(ret != SAMPLE_SUCCESS) {
-        printf("\nError encrypting client data. Error code: %d\n", (int)ret);
-        free(formatted_data);
-        free(enc_data);
-        return -1;
-    }
     free(formatted_data);
+    if(ret != SAMPLE_SUCCESS) {
+        printf("Error code: %d\n", (int)ret);
+        free(enc_data);
+        return (int)print_error_message(CLIENT_ENCRYPTION_ERROR);
+    }
 
     // Send data for publication
-    if(send_data_for_publication(data.pk, data.type, enc_data, enc_data_size) != 0) {
-        free(enc_data);
-        return -1;
-    }
+    int send_ret = send_data_for_publication(data.pk, data.type, enc_data, enc_data_size);
     free(enc_data);
     
-    return 0;
+    return send_ret;
 }
