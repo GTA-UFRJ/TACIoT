@@ -59,8 +59,6 @@ void debug_print_encrypted(
         printf("\n");
 }
 
-
-
 void free_data_array(char** datas, uint32_t* datas_sizes, uint32_t data_count) {
     for(unsigned i = 0; i < data_count; i++)
         free(datas[i]);

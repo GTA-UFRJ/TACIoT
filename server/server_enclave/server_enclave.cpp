@@ -68,7 +68,7 @@ sgx_status_t process_data(
 
     // Unseal keys
     uint8_t publisher_key[16] = {0}; 
-    uint32_t publisher_key_size = (uint32_t)(16*sizeof(uint8_t));
+    uint32_t publisher_key_size = 16;
     ret = sgx_unseal_data(publisher_sealed_key, NULL, NULL, &publisher_key[0], &publisher_key_size);
     /*
     if(ret != SGX_SUCCESS) {
@@ -79,7 +79,7 @@ sgx_status_t process_data(
 
     // Unseal keys
     uint8_t storage_key[16] = {0}; 
-    uint32_t storage_key_size = (uint32_t)(16*sizeof(uint8_t));
+    uint32_t storage_key_size = 16;
     ret = sgx_unseal_data(storage_sealed_key, NULL, NULL, &storage_key[0], &storage_key_size);
     /*
     if(ret != SGX_SUCCESS) {
@@ -132,7 +132,7 @@ sgx_status_t process_data(
     }
     
     // Encrypt data using key
-    *processed_result_size = (uint32_t)(16 + 12 + sizeof(uint8_t)*(dec_msg_len));
+    *processed_result_size = 16 + 12 + dec_msg_len;
     if(*processed_result_size > buffer_max_size) {
         ret = (sgx_status_t)0x5001;
         return ret;
@@ -177,7 +177,7 @@ sgx_status_t retrieve_data(
     sgx_status_t ret = SGX_SUCCESS;
 
     // Unseal keys
-    uint32_t key_size = (uint32_t)(16*sizeof(uint8_t));
+    uint32_t key_size = 16;
 
     uint8_t querier_key[16] = {0}; 
     ret = sgx_unseal_data(sealed_querier_key, NULL, NULL, &querier_key[0], &key_size);
@@ -263,7 +263,7 @@ sgx_status_t retrieve_data(
 
     // Get permissions and verify if querier is included
     // pk|72d41281|type|123456|payload|250|permission1|72d41281
-    char* text = (char*)malloc(1+dec_msg_len*sizeof(char));
+    char* text = (char*)malloc(1+(size_t)dec_msg_len);
     memcpy(text, decMessage, dec_msg_len);
     text[dec_msg_len] = '\0';
     
@@ -331,7 +331,7 @@ sgx_status_t sum_encrypted_data_s(
 
     // Unseal keys
     uint8_t publisher_key[16] = {0}; 
-    uint32_t publisher_key_size = (uint32_t)(16*sizeof(uint8_t));
+    uint32_t publisher_key_size = 16;
     ret = sgx_unseal_data(publisher_sealed_key, NULL, NULL, &publisher_key[0], &publisher_key_size);
     /*
     if(ret != SGX_SUCCESS) {
@@ -342,7 +342,7 @@ sgx_status_t sum_encrypted_data_s(
 
     // Unseal keys
     uint8_t storage_key[16] = {0}; 
-    uint32_t storage_key_size = (uint32_t)(16*sizeof(uint8_t));
+    uint32_t storage_key_size = 16;
     ret = sgx_unseal_data(storage_sealed_key, NULL, NULL, &storage_key[0], &storage_key_size);
     /*
     if(ret != SGX_SUCCESS) {
@@ -359,7 +359,7 @@ sgx_status_t sum_encrypted_data_s(
     memcpy(server_key, storage_key, (size_t)storage_key_size);
     //ocall_print_secret(&storage_key[0], 16);
 
-    uint32_t publisher_data_size = max_data_size*sizeof(uint8_t);
+    uint32_t publisher_data_size = max_data_size;
     uint8_t* publisher_data = (uint8_t*)malloc((size_t)publisher_data_size);
     
     // Decrypt publisher data
@@ -380,7 +380,7 @@ sgx_status_t sum_encrypted_data_s(
     
     // Pick publisher access permissions
     // pk|72d41281|type|weg_multimeter|payload|250|permission1|72d41281
-    char access_permissions [1+publisher_data_size*sizeof(char)];
+    char access_permissions [1+publisher_data_size];
     memcpy(access_permissions, publisher_data, publisher_data_size);
     access_permissions[publisher_data_size] = 0;
     
@@ -394,19 +394,18 @@ sgx_status_t sum_encrypted_data_s(
     }
     free(publisher_data);
 
-    uint32_t client_data_size = max_data_size*sizeof(uint8_t);
+    uint32_t client_data_size = max_data_size;
     uint8_t* client_data = (uint8_t*)malloc((size_t)client_data_size);
 
     // Iterate over data array
     unsigned long total = 0;
-    memset(client_data,0,max_data_size*sizeof(uint8_t));
+    memset(client_data,0,max_data_size);
     char payload[128];
     for (uint32_t index = 0; index < data_count; index++) {
 
         // Separate parameters of stored data
         char* msg = (char*)data_array[index];
         uint32_t encrypted_size;
-        uint8_t* encrypted_data;
 
         i = 0;
         token = strtok_r(msg, "|", &msg);
@@ -420,7 +419,7 @@ sgx_status_t sum_encrypted_data_s(
                 encrypted_size = (uint32_t)strtoul(token,NULL,16);
         }
         
-        encrypted_data = (uint8_t*)malloc(encrypted_size);
+        uint8_t encrypted_data[encrypted_size];
         memcpy(encrypted_data, msg, encrypted_size);
 
         /* Encrypted data:      | MAC | IV | AES128(data)
@@ -497,7 +496,7 @@ sgx_status_t sum_encrypted_data_s(
         if(accepted)
             total += numeric_payload;
 
-        memset(client_data,0,max_data_size*sizeof(uint8_t));
+        memset(client_data,0,max_data_size);
     }
     free(client_data);
 
@@ -583,7 +582,7 @@ sgx_status_t get_db_request_s(
 
     // Unseal keys
     uint8_t key[16] = {0}; 
-    uint32_t key_size = (uint32_t)(16*sizeof(uint8_t));
+    uint32_t key_size = 16;
     ret = sgx_unseal_data(sealed_key, NULL, NULL, &key[0], &key_size);
     /*
     if(ret != SGX_SUCCESS) {
@@ -676,7 +675,7 @@ sgx_status_t revoke_data(
     sgx_status_t ret = SGX_SUCCESS;
 
     // Unseal keys
-    uint32_t key_size = (uint32_t)(16*sizeof(uint8_t));
+    uint32_t key_size = 16;
 
     uint8_t revoker_key[16] = {0}; 
     ret = sgx_unseal_data(sealed_revoker_key, NULL, NULL, &revoker_key[0], &key_size);

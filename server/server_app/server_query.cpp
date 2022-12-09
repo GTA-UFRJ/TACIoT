@@ -423,7 +423,7 @@ server_error_t server_query(bool secure, const Request& req, Response& res, sgx_
     sqlite3_close(db);
 
     // Get data at index
-    if(rcv_msg.index > filtered_data_count) {
+    if(rcv_msg.index >= filtered_data_count) {
         free_data_array(datas, datas_sizes, filtered_data_count);
         return print_error_message(OUT_OF_BOUND_INDEX);
     }

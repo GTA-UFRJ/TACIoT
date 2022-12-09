@@ -33,10 +33,10 @@ sudo cp ./wrk /usr/bin/
 ## Usage
 To install the project:
 ```
-make LATENCY=0
+make LATENCY=0 DEBUG=1
 ```
-Changing the latency value allow us to any non negative integer value allows you to add
-some networking latency in miliseconds for each sent or received message from server.
+Changing the latency value to any non negative integer value allows you to simulate 
+network latency in miliseconds for each sent or received message from the server.
 
 To test the server data publishing and quering service, run:
 ```

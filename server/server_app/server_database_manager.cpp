@@ -1,12 +1,15 @@
+/*
+ * Teleinformatic and Automation Group (GTA, Coppe, UFRJ)
+ * Author: Guilherme Araujo Thomaz
+ * Description: manages the r/w operations in the database and key vault
+ */
+
 #include <stdio.h>
 #include "server_database_manager.h"
 #include <string.h>
 #include "config_macros.h"
 #include "utils.h"
 #include "timer.h"
-
-// COMPILATION: g++ -c server/server_app/server_database_manager.cpp -o server/server_app/server_database_manager.o
-// LINKEDITON: g++ server/server_app/server_database_manager.o -l sqlite3 -o server/server_app/server_database_manager
 
 void free_callback_arg(callback_arg_t callback_arg) {
     for(unsigned i = 0; i < callback_arg.data_count; i++)

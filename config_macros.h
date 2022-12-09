@@ -151,3 +151,11 @@
 #ifndef MAX_PAYLOAD_SIZE
 #define MAX_PAYLOAD_SIZE 128
 #endif
+
+#ifndef DEFAULT_PERMS_DB_PATH
+#define DEFAULT_PERMS_DB_PATH "/home/guiaraujo/TACIoT/database/default_permissions.db"
+#endif
+
+#ifndef MAX_NUM_PERMISSIONS
+#define MAX_NUM_PERMISSIONS 16
+#endif

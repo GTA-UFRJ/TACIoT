@@ -19,6 +19,8 @@ typedef struct client_data {
     char** permissions_list;
 } client_data_t;
 
+void free_permissions_array(char**, uint32_t);
+
 void print_usage();
 
 void free_client_data(client_data_t );

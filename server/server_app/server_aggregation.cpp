@@ -21,7 +21,6 @@ server_error_t sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
 {
 
     Timer t("sum_encrypted_data_i");
-    server_error_t ret = OK;
 
     sample_status_t encryption_ret = SAMPLE_SUCCESS;
 
@@ -218,4 +217,4 @@ server_error_t get_db_request_i(iot_message_t rcv_msg, uint8_t* key, char* db_co
     free(publisher_data);
 
     return OK;
-}
+} 

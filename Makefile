@@ -158,6 +158,7 @@ Client_Cpp_Files := client/cli.cpp \
 					client/client_publish.cpp \
 					client/client_query.cpp \
 					client/client_revoke.cpp \
+					client/client_permdb_manager.cpp \
 					utils/utils.cpp \
 					utils/encryption.cpp \
 					utils/errors.cpp \
@@ -182,6 +183,7 @@ Client_Link_Flags := -L$(SGX_LIBRARY_PATH) \
 					 -pthread \
 					 -l$(Urts_Library_Name) \
 					 -lpthread \
+					 -lsqlite3 \
 					 -Wl,-rpath=$(CURDIR)/sample_libcrypto \
 					 -Wl,-rpath=$(CURDIR) \
 					 -Lutils \

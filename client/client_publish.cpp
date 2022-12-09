@@ -92,10 +92,18 @@ int client_publish(uint8_t* key, client_data_t data)
 {
     // Mount text with client data
     // pk|72d41281|type|123456|payload|250|permission1|72d41281
-    uint32_t formatted_data_size = 3+9+5+7+8+(uint32_t)strlen(data.payload)+13+8; // 56
+    uint32_t formatted_data_size = 3+9+5+7+8+(uint32_t)strlen(data.payload)+(13+8)*(data.permissions_count); // 56
     char* formatted_data = (char*)malloc(sizeof(char) * (formatted_data_size+1));
-    sprintf(formatted_data,"pk|%s|type|%s|payload|%s|permission1|%s", 
-            data.pk, data.type, data.payload, data.permissions_list[0]);
+    sprintf(formatted_data,"pk|%s|type|%s|payload|%s", 
+            data.pk, data.type, data.payload);
+
+    char* permission = (char*)malloc(22);
+    for(uint32_t index=0; index<data.permissions_count; index++) {
+        sprintf(permission, "|permission%d|%s", index, data.permissions_list[index]);
+        strncpy(formatted_data+strlen(formatted_data), permission, strlen(permission));
+    }
+    free(permission);
+    printf("%s\n", formatted_data);
 
     uint32_t enc_data_size = MAX_ENC_DATA_SIZE;
     uint8_t* enc_data = (uint8_t *) malloc(enc_data_size*sizeof(uint8_t));
