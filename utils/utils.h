@@ -34,4 +34,6 @@ void debug_print_encrypted(size_t , uint8_t* );
 
 void free_data_array(char** , uint32_t* , uint32_t );
 
+bool verify_file_existance(char* );
+
 #endif // _UTILS_H_

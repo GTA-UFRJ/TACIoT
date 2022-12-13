@@ -25,9 +25,6 @@
 // Separate parameters of stored message
 server_error_t get_stored_parameters(char*, stored_data_t*);
 
-// Verify if file alredy exists
-bool verify_file_existance(char*);
-
 // Write client key to file
 int write_key(uint8_t*, uint32_t, char*);
 

@@ -159,6 +159,9 @@ Client_Cpp_Files := client/cli.cpp \
 					client/client_query.cpp \
 					client/client_revoke.cpp \
 					client/client_permdb_manager.cpp \
+					client/client_key_manager.cpp \
+					client/client_apnet.cpp \
+					client/client_uenet.cpp \
 					utils/utils.cpp \
 					utils/encryption.cpp \
 					utils/errors.cpp \

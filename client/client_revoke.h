@@ -12,9 +12,9 @@
 #include <stdint.h>
 
 // Send message revoking some data
-int send_revoke_message(uint32_t, char*, uint32_t, char*, uint8_t*);
+int send_revoke_message(uint32_t, char*, uint32_t, char*, uint8_t*, char* );
 
 // Receive revoke message and send to server 
-int client_revoke(uint8_t*, uint32_t, char* );
+int client_revoke(uint8_t*, uint32_t, char*, char* );
 
 #endif

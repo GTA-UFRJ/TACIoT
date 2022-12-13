@@ -9,6 +9,7 @@
 #include <string.h>
 #include "config_macros.h"
 #include "errors.h"
+#include "cli.h"
 
 void free_callback_arg(callback_arg_t callback_arg) {
     for(unsigned i = 0; i < callback_arg.data_count; i++)
@@ -48,6 +49,69 @@ static int callback_perms(void* received_from_exec, int , char** columns_values,
     }
 
     return 0;
+}
+
+// type|123456|permission1|72d41281|...
+int parse_configure_perms_message(char* msg, default_perms_t* p_rcv_perms) {
+
+    if(DEBUG) printf("\nParsing publication message fields\n");
+    
+    int permission_count = 0;
+    p_rcv_perms->permissions_list = (char**)malloc(MAX_NUM_PERMISSIONS*sizeof(char*));
+
+    char* token = strtok_r(msg, "|", &msg);
+    int i = 0;
+    while (token != NULL)
+    {
+        i++;
+        token = strtok_r(NULL, "|", &msg);
+
+        // Get data type
+        if (i == 1) {
+            memcpy(p_rcv_perms->type, token, 6);
+            p_rcv_perms->type[6] = '\0';
+
+            if(DEBUG) printf("type: %s\n", p_rcv_perms->type);
+        }
+
+        // Get permissions list
+        if (i == 3+2*permission_count) {
+            (p_rcv_perms->permissions_list)[permission_count] = (char*)malloc(9);
+            memcpy((p_rcv_perms->permissions_list)[permission_count], token, 8);
+            (p_rcv_perms->permissions_list)[permission_count][8]  = '\0';
+            permission_count++;
+        }
+    }
+    p_rcv_perms->permissions_count = permission_count;
+    return 0;
+}
+
+int get_configure_perms_message(const httplib::Request& req, char* snd_msg, uint32_t* p_size) {
+
+    if(DEBUG) printf("\nGetting configure access permissions message fields:\n");
+
+    std::string size_field = req.matches[1].str();
+
+    try {
+        *p_size = (uint32_t)std::stoul(size_field);
+    }
+    catch (std::invalid_argument& exception) {
+        return (int)print_error_message(INVALID_HTTP_MESSAGE_SIZE_FIELD_ERROR);
+    }
+
+    if(*p_size > URL_MAX_SIZE)
+        return (int)print_error_message(HTTP_MESSAGE_SIZE_OVERFLOW_ERROR);
+
+    if(DEBUG) printf("Size: %u\n", *p_size);
+
+    std::string message_field = req.matches[2].str();
+
+    strncpy(snd_msg, message_field.c_str(), (size_t)(*p_size-1));
+    snd_msg[*p_size] = '\0';
+    
+    if(DEBUG) printf("Message: %s\n", snd_msg);
+
+    return OK;
 }
 
 int read_default_perms(sqlite3* db, char* type, char** permissions_list, uint32_t* permissions_count) {

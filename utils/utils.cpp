@@ -14,6 +14,7 @@
 #include <chrono>
 #include "sample_libcrypto.h"
 #include "config_macros.h"
+#include <unistd.h>
 
 errno_t memcpy_s(
     void *dest,
@@ -64,4 +65,8 @@ void free_data_array(char** datas, uint32_t* datas_sizes, uint32_t data_count) {
         free(datas[i]);
     free(datas);
     free(datas_sizes);
+}
+
+bool verify_file_existance(char* filename) {
+    return ( access(filename, F_OK) != -1 ? true : false );
 }

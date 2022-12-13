@@ -19,7 +19,7 @@
 #include "config_macros.h"
 #include HTTPLIB_PATH
 
-int send_revoke_message(uint32_t data_index, char* command, uint32_t command_size, uint8_t* enc_pk)
+int send_revoke_message(uint32_t data_index, char* command, uint32_t command_size, uint8_t* enc_pk, char* id)
 {
     // Replace SPACE character in command by "_"
     for(unsigned i=0; i<strlen(command); i++) 
@@ -32,7 +32,7 @@ int send_revoke_message(uint32_t data_index, char* command, uint32_t command_siz
     char http_response[URL_MAX_SIZE];
     uint32_t message_size = 53+(uint32_t)strlen(command)+(8+16+12)*3;
     sprintf(http_request, "/revoke/size=%u/pk|%s|index|%06u|size|%02x|command|%s|encrypted|", 
-    message_size, CLIENT_ID, data_index, command_size, command);
+    message_size, id, data_index, command_size, command);
 
     char auxiliar[4];
     for (uint32_t i=0; i<8+16+12; i++) {
@@ -76,19 +76,19 @@ int send_revoke_message(uint32_t data_index, char* command, uint32_t command_siz
     return 0;
 }
 
-int client_revoke(uint8_t* key, uint32_t data_index, char* command)
+int client_revoke(uint8_t* key, uint32_t data_index, char* command, char* id)
 {
     // Encrypt pk 
     uint32_t enc_pk_size = 8+12+16;
     uint8_t enc_pk[enc_pk_size];
-    sample_status_t ret = encrypt_data(key, enc_pk, &enc_pk_size, (uint8_t*)CLIENT_ID, 8);
+    sample_status_t ret = encrypt_data(key, enc_pk, &enc_pk_size, (uint8_t*)id, 8);
     if(ret != SAMPLE_SUCCESS) {
         printf("\nError encrypting pk. Error code: %d\n", (int)ret);
         return -1;
     }
 
     // Send message for revocation
-    if(send_revoke_message(data_index, command, (uint32_t)strlen(command), enc_pk) != 0) 
+    if(send_revoke_message(data_index, command, (uint32_t)strlen(command), enc_pk, id) != 0) 
         return -1;
 
     return 0;

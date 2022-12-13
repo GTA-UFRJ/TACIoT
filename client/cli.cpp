@@ -9,9 +9,12 @@
 #include <string.h>  
 #include <cstdio>  
 #include "client_permdb_manager.h"
+#include "client_key_manager.h"
 #include "client_publish.h"
 #include "client_revoke.h"
 #include "client_query.h"
+#include "client_apnet.h"
+#include "client_uenet.h"
 #include "config_macros.h" 
 #include "utils.h" 
 #include "errors.h"
@@ -23,16 +26,13 @@ void free_permissions_array(char** permissions_list, uint32_t permissions_count)
     free(permissions_list);
 }
 
-// Secret key for encryption
-uint8_t global_key[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-
 void print_usage() {
     printf("Usage examples:\n");
-    printf("Example for publishing a data of type 123456, payload 250 and permission for 72d4128\n");
+    printf("Example for publishing a data of type 123456, payload 250 and permission for 72d41281\n");
     printf("./Client publish 123456 250 72d41281\n\n");
     printf("Example for publishing a data of type 123456, payload 250 and default access permissions\n");
     printf("./Client publish 123456 250 default\n\n");
-    printf("Example for publishing a data of type 555555, payload \"SELECT * from TACIOT where type='123456'\" and permission for 72d4128\n");
+    printf("Example for publishing a data of type 555555, payload \"SELECT * from TACIOT where type='123456'\" and permission for 72d41281\n");
     printf("./Client publish 555555 \"SELECT * from TACIOT where type='123456'\" 72d41281\n\n");
     printf("Example for querying a data using SQL command \"SELECT * from TACIOT where type='123456'\" of index 0\n");
     printf("./Client query 0 \"SELECT * from TACIOT where type='123456'\"\n\n");
@@ -42,6 +42,14 @@ void print_usage() {
     printf("./Client read_perm 123456\n\n");
     printf("Example for writing default access permissions for type='123456'\n");
     printf("./Client write_perm 123456 72d41281\n\n");
+    printf("Example for registering client with ID 72d41281 and key equals to 16 bytes of zero\n");
+    printf("./Client register 72d41281 00000000000000000000000000000000\n\n");
+    printf("Example for registering access point with ID 72d41281 and key equals to 16 bytes of zero\n");
+    printf("./Client register_ap 72d41281 00000000000000000000000000000000\n\n");
+    printf("Example for writing on the access point default access permissions for type='123456'\n");
+    printf("./Client ap_perms 123456 72d41281\n\n");
+    printf("Example for initializing access point\n");
+    printf("./Client ap_init\n\n");
 }
 
 void free_client_data(client_data_t data) {
@@ -68,12 +76,16 @@ int main (int argc, char *argv[]) {
             print_usage();
             return -1;
         }
+        
+        client_identity_t id;
+        if(read_identity(&id))
+            return -1;
 
         // Fill client data structure
         client_data_t data;
         data.payload = (char*)malloc(strlen(argv[3])+1);
 
-        sprintf(data.pk, "%s", PK_SAMPLE);
+        sprintf(data.pk, "%s", id.pk);
         sprintf(data.type, "%s", argv[2]);
         sprintf(data.payload, "%s", argv[3]);
 
@@ -104,9 +116,10 @@ int main (int argc, char *argv[]) {
         }
 
         // Publish data
-        ret = client_publish(global_key, data);
+        ret = client_publish(id.comunication_key, data);
         free_client_data(data);
     }
+
     else if (!strcmp(argv[1],"query"))
     {
         if(argc < 4) {
@@ -119,6 +132,10 @@ int main (int argc, char *argv[]) {
             print_usage();
             return -1;
         }
+        
+        client_identity_t id;
+        if(read_identity(&id))
+            return -1;
 
         char* invalid_char;
         uint32_t index = (uint32_t)strtoul(argv[2],&invalid_char,10);
@@ -135,7 +152,7 @@ int main (int argc, char *argv[]) {
         uint32_t queried_data_size = MAX_DATA_SIZE;
         uint8_t queried_data[queried_data_size];
 
-        ret = client_query(global_key, queried_data, index, command, &queried_data_size);
+        ret = client_query(id.comunication_key, queried_data, index, command, &queried_data_size, id.pk);
         free(command);
 
         if(!ret) {
@@ -156,6 +173,10 @@ int main (int argc, char *argv[]) {
             print_usage();
             return -1;
         }
+        
+        client_identity_t id;
+        if(read_identity(&id))
+            return -1;
 
         char* invalid_char;
         uint32_t index = (uint32_t)strtoul(argv[2],&invalid_char,10);
@@ -169,7 +190,7 @@ int main (int argc, char *argv[]) {
         char* command = (char*)malloc(strlen(argv[3])+1);
         sprintf(command, "%s", argv[3]);
 
-        if(client_revoke(global_key, index, command) != 0) {
+        if(client_revoke(id.comunication_key, index, command, id.pk) != 0) {
             free(command);
             return -1;
         }
@@ -243,10 +264,91 @@ int main (int argc, char *argv[]) {
 
     }
 
-    else if (*argv[1] == 'r') {
-        //send_key();
-        ;
+    else if (!strcmp(argv[1],"register")) {
+
+        if(argc != 4) {
+            printf("Invalid number of arguments\n");
+            print_usage();
+            return -1;
+        }
+
+        // Fill structure with ID (pk) and communication key (CC)
+        client_identity_t id;
+        strcpy(id.pk, argv[2]);
+
+        char byte_auxiliar[3];
+        char* invalid_char;
+        for(uint32_t index=0; index<16; index++) {
+
+            sprintf(byte_auxiliar, "%c%c", argv[3][2*index], argv[3][2*index+1]);
+            id.comunication_key[index] = (uint8_t)strtoul(byte_auxiliar, &invalid_char, 16);
+
+            if(byte_auxiliar != 0 && *invalid_char != 0) 
+                return (int)print_error_message(INVALID_ENCRYPTED_FIELD_ERROR);
+        }
+
+        return configure_device(id);
     }
+
+    else if (!strcmp(argv[1],"register_ap")) {
+
+        if(argc != 4) {
+            printf("Invalid number of arguments\n");
+            print_usage();
+            return -1;
+        }
+
+        // Fill structure with ID (pk) and communication key (CC)
+        client_identity_t id;
+        strcpy(id.pk, argv[2]);
+
+        char byte_auxiliar[3];
+        char* invalid_char;
+        for(uint32_t index=0; index<16; index++) {
+
+            sprintf(byte_auxiliar, "%c%c", argv[3][2*index], argv[3][2*index+1]);
+            id.comunication_key[index] = (uint8_t)strtoul(byte_auxiliar, &invalid_char, 16);
+
+            if(byte_auxiliar != 0 && *invalid_char != 0) 
+                return (int)print_error_message(INVALID_ENCRYPTED_FIELD_ERROR);
+        }
+
+        return send_register_ap_message(id);
+    }
+
+    else if (!strcmp(argv[1],"ap_perms"))
+    {
+        if(argc < 4) {
+            printf("Too less arguments\n");
+            print_usage();
+            return -1;
+        }
+
+        // Prepare array with data permissions
+        default_perms_t perms;
+        strcpy(perms.type, argv[2]);
+        perms.permissions_count = argc - 3;
+        perms.permissions_list = (char**)malloc(perms.permissions_count*sizeof(char*));
+        for(uint32_t index=0; index<perms.permissions_count; index++) {
+            (perms.permissions_list)[index] = (char*)malloc(9);
+            strcpy((perms.permissions_list)[index], argv[index+3]);
+        }
+
+        ret = send_ap_perms_message(perms);
+        free_permissions_array(perms.permissions_list, perms.permissions_count);
+    }
+
+    else if (!strcmp(argv[1],"ap_init"))
+    {
+        if(argc != 2) {
+            printf("Invalid number of arguments arguments\n");
+            print_usage();
+            return -1;
+        }
+
+        return initialize_ap_server();
+    }
+    
     else {
         printf("Invalid message\n");
         print_usage();

@@ -19,6 +19,17 @@ typedef struct client_data {
     char** permissions_list;
 } client_data_t;
 
+typedef struct client_identity {
+    char pk[9];
+    uint8_t comunication_key[16];
+} client_identity_t;
+
+typedef struct default_perms {
+    char type[7];
+    uint32_t permissions_count;
+    char** permissions_list;
+} default_perms_t;
+
 void free_permissions_array(char**, uint32_t);
 
 void print_usage();

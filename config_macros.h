@@ -159,3 +159,15 @@
 #ifndef MAX_NUM_PERMISSIONS
 #define MAX_NUM_PERMISSIONS 16
 #endif
+
+#ifndef CLIENT_KEY_FILENAME
+#define CLIENT_KEY_FILENAME "/home/guiaraujo/TACIoT/database/identity"
+#endif
+
+#ifndef AP_URL
+#define AP_URL "localhost"
+#endif
+
+#ifndef AP_PORT
+#define AP_PORT 7777
+#endif

@@ -8,6 +8,7 @@
 #include <mutex>
 #include <unistd.h>
 #include "errors.h"
+#include "utils.h"
  
 std::mutex thread_sync;
 
@@ -58,12 +59,6 @@ server_error_t get_stored_parameters(char* msg, stored_data_t* p_stored)
     return OK;
 }
 
-bool verify_file_existance(char* filename) 
-{
-    Timer t("verify_file_existance");
-    return ( access(filename, F_OK) != -1 ? true : false );
-}
-
 int write_key(uint8_t* ck, uint32_t ck_size, char* filename) 
 {
     Timer t("write_key");    
@@ -81,7 +76,7 @@ int write_key(uint8_t* ck, uint32_t ck_size, char* filename)
     fwrite(ck, 1, (size_t)ck_size, file);
     fclose(file);
 
-    // Next thread gets the lock ate the start of the function
+    // Next thread gets the lock at the start of the function
     thread_sync.unlock();
     
     return 0;

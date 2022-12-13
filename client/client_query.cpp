@@ -73,7 +73,8 @@ int send_query_message(uint32_t data_index,
                        uint32_t* enc_message_size,
                        char* command, 
                        uint32_t command_size,
-                       uint8_t* enc_pk)
+                       uint8_t* enc_pk,
+                       char* id)
 {
     int ret = 0;
 
@@ -86,7 +87,7 @@ int send_query_message(uint32_t data_index,
     char* http_request = (char*)malloc(URL_MAX_SIZE);
     uint32_t message_size = 53+(uint32_t)strlen(command)+(8+16+12)*3;
     sprintf(http_request, "/query/size=%u/pk|%s|index|%06u|size|%02x|command|%s|encrypted|", 
-    message_size, CLIENT_ID, data_index, command_size, command);
+    message_size, id, data_index, command_size, command);
 
     char auxiliar[4];
     for (uint32_t i=0; i<8+16+12; i++) {
@@ -139,12 +140,12 @@ int send_query_message(uint32_t data_index,
     return 0;
 }
 
-int client_query(uint8_t* key, uint8_t* data, uint32_t data_index, char* command, uint32_t* data_size)
+int client_query(uint8_t* key, uint8_t* data, uint32_t data_index, char* command, uint32_t* data_size, char* id)
 { 
     // Encrypt pk
     uint32_t enc_pk_size = 8+12+16;
     uint8_t* enc_pk = (uint8_t*)malloc(enc_pk_size);
-    sample_status_t ret = encrypt_data(key, enc_pk, &enc_pk_size, (uint8_t*)CLIENT_ID, 8);
+    sample_status_t ret = encrypt_data(key, enc_pk, &enc_pk_size, (uint8_t*)id, 8);
     if(ret != SAMPLE_SUCCESS) {
         free(enc_pk);
         printf("Error code: %d\n", (int)ret);
@@ -156,7 +157,7 @@ int client_query(uint8_t* key, uint8_t* data, uint32_t data_index, char* command
     uint32_t enc_message_size = MAX_ENC_DATA_SIZE;
     uint8_t* enc_message = (uint8_t*)malloc(MAX_ENC_DATA_SIZE*sizeof(uint8_t));
     
-    int query_ret = send_query_message(data_index, enc_message, &enc_message_size, command, (uint32_t)strlen(command), enc_pk);
+    int query_ret = send_query_message(data_index, enc_message, &enc_message_size, command, (uint32_t)strlen(command), enc_pk, id);
     free(enc_pk);
     if(query_ret) {
         free(enc_message);
