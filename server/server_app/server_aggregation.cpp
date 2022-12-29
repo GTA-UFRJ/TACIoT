@@ -26,7 +26,7 @@ server_error_t sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
 
     // Decrypt publisher data
 
-    if(DEBUG) printf("\nDecrypting message\n");
+    if(DEBUG_PRINT) printf("\nDecrypting message\n");
 
     uint32_t publisher_data_size = MAX_DATA_SIZE;
     uint8_t* publisher_data = (uint8_t*)malloc((size_t)publisher_data_size);
@@ -40,7 +40,7 @@ server_error_t sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
         return print_error_message(MESSAGE_DECRYPTION_ERROR);
     }
 
-    if(DEBUG) printf("%s\n", (char*)publisher_data);
+    if(DEBUG_PRINT) printf("%s\n", (char*)publisher_data);
 
     // Pick publisher access permissions
     // pk|72d41281|type|weg_multimeter|payload|250|permission1|72d41281
@@ -61,7 +61,7 @@ server_error_t sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
     uint8_t* client_data = (uint8_t*)malloc((size_t)client_data_size);
 
     // Iterate over data array
-    if(DEBUG) printf("\nDecrypting collected datas\n");
+    if(DEBUG_PRINT) printf("\nDecrypting collected datas\n");
 
     unsigned long total = 0;
     for (uint32_t index = 0; index < data_count; index++) {
@@ -149,9 +149,9 @@ server_error_t sum_encrypted_data_i(uint8_t* encrypted_aggregation_msg,
     size_t aggregation_data_size = strlen(aggregation_data);
     free(access_permissions);
 
-    if(DEBUG) printf("Aggreagtion data: %s\n", aggregation_data);
+    if(DEBUG_PRINT) printf("Aggreagtion data: %s\n", aggregation_data);
 
-    if(DEBUG) printf("\nEncrypting aggreagtion data\n");
+    if(DEBUG_PRINT) printf("\nEncrypting aggreagtion data\n");
 
     // Encrypt aggregation data
     encryption_ret = encrypt_data(storage_key,
@@ -172,7 +172,7 @@ server_error_t get_db_request_i(iot_message_t rcv_msg, uint8_t* key, char* db_co
     Timer t("get_db_request_i");
 
     // Decrypt publisher data to get the DB request
-    if(DEBUG) printf("\nDecrypting publisher message\n");
+    if(DEBUG_PRINT) printf("\nDecrypting publisher message\n");
 
     uint32_t publisher_data_size = MAX_DATA_SIZE;
     uint8_t* publisher_data = (uint8_t*)malloc((size_t)publisher_data_size+1);
@@ -196,10 +196,10 @@ server_error_t get_db_request_i(iot_message_t rcv_msg, uint8_t* key, char* db_co
     }
 
     publisher_data[publisher_data_size] = 0;
-    if(DEBUG) printf("%s\n", (char*)publisher_data);
+    if(DEBUG_PRINT) printf("%s\n", (char*)publisher_data);
 
     // Get DB request
-    if(DEBUG) printf("\nSeparating DB request embeded inside decrypted message\n");
+    if(DEBUG_PRINT) printf("\nSeparating DB request embeded inside decrypted message\n");
 
     int i = 0;
     char* publisher_data_string = (char*)publisher_data;
@@ -212,7 +212,7 @@ server_error_t get_db_request_i(iot_message_t rcv_msg, uint8_t* key, char* db_co
             strcpy(db_command, token);
     }
     
-    if(DEBUG) printf("DB command: %s\n", db_command);
+    if(DEBUG_PRINT) printf("DB command: %s\n", db_command);
 
     free(publisher_data);
 

@@ -26,6 +26,6 @@
 server_error_t get_stored_parameters(char*, stored_data_t*);
 
 // Write client key to file
-int write_key(uint8_t*, uint32_t, char*);
+server_error_t write_key(uint8_t*, uint32_t, char*);
 
 #endif

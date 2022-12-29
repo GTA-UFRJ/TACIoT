@@ -57,7 +57,7 @@ void ocall_print_aggregated(unsigned long number) {
 server_error_t parse_request(char* msg, iot_message_t* p_rcv_msg)
 {
     Timer t("parse_request");   
-    if(DEBUG) printf("\nParsing publication message fields\n");
+    if(DEBUG_PRINT) printf("\nParsing publication message fields\n");
     
     char* token = strtok_r(msg, "|", &msg);
     int i = 0;
@@ -73,7 +73,7 @@ server_error_t parse_request(char* msg, iot_message_t* p_rcv_msg)
             memcpy(p_rcv_msg->pk, token, 8);
             p_rcv_msg->pk[8] = '\0';
 
-            if(DEBUG) printf("pk: %s\n", p_rcv_msg->pk);
+            if(DEBUG_PRINT) printf("pk: %s\n", p_rcv_msg->pk);
         }
 
         // Get data type
@@ -81,7 +81,7 @@ server_error_t parse_request(char* msg, iot_message_t* p_rcv_msg)
             memcpy(p_rcv_msg->type, token, 6);
             p_rcv_msg->type[6] = '\0';
 
-            if(DEBUG) printf("type: %s\n", p_rcv_msg->type);
+            if(DEBUG_PRINT) printf("type: %s\n", p_rcv_msg->type);
         }
 
         // Get encrypted message size
@@ -91,13 +91,13 @@ server_error_t parse_request(char* msg, iot_message_t* p_rcv_msg)
             if(*invalid_char != 0)
                 return print_error_message(INVALID_ENCRYPTED_SIZE_FIELD_ERROR);
 
-            if(DEBUG) printf("encrypted_size: %u\n", p_rcv_msg->encrypted_size);
+            if(DEBUG_PRINT) printf("encrypted_size: %u\n", p_rcv_msg->encrypted_size);
         }
 
         // Get encrypted message
         if (i == 7) {
 
-            if(DEBUG) printf("encrypted: ");
+            if(DEBUG_PRINT) printf("encrypted: ");
 
             p_rcv_msg->encrypted = (uint8_t*)malloc((p_rcv_msg->encrypted_size+1) * sizeof(uint8_t));
 
@@ -112,10 +112,10 @@ server_error_t parse_request(char* msg, iot_message_t* p_rcv_msg)
                     return print_error_message(INVALID_ENCRYPTED_FIELD_ERROR);
                 }
 
-                if(DEBUG) printf("%02x,", (unsigned)p_rcv_msg->encrypted[j]);
+                if(DEBUG_PRINT) printf("%02x,", (unsigned)p_rcv_msg->encrypted[j]);
             }
             p_rcv_msg->encrypted[p_rcv_msg->encrypted_size] = '\0';
-            if(DEBUG) printf("\n");
+            if(DEBUG_PRINT) printf("\n");
         }
     }
 
@@ -125,7 +125,7 @@ server_error_t parse_request(char* msg, iot_message_t* p_rcv_msg)
 server_error_t get_publish_message(const Request& req, char* snd_msg, uint32_t* p_size)
 {
     Timer t("get_publish_message");
-    if(DEBUG) printf("\nGetting publish message fields:\n");
+    if(DEBUG_PRINT) printf("\nGetting publish message fields:\n");
 
     std::string size_field = req.matches[1].str();
 
@@ -139,14 +139,14 @@ server_error_t get_publish_message(const Request& req, char* snd_msg, uint32_t* 
     if(*p_size > URL_MAX_SIZE)
         return print_error_message(HTTP_MESSAGE_SIZE_OVERFLOW_ERROR);
 
-    if(DEBUG) printf("Size: %u\n", *p_size);
+    if(DEBUG_PRINT) printf("Size: %u\n", *p_size);
 
     std::string message_field = req.matches[2].str();
 
     strncpy(snd_msg, message_field.c_str(), (size_t)(*p_size-1));
     snd_msg[*p_size] = '\0';
     
-    if(DEBUG) printf("Message: %s\n", snd_msg);
+    if(DEBUG_PRINT) printf("Message: %s\n", snd_msg);
 
     return OK;
 }
@@ -176,18 +176,18 @@ server_error_t server_publish(bool secure, const Request& req, Response& res, sg
 
     // Identify data type and call function to process it
     if(!strcmp(rcv_msg.type, "555555")){
-        if(DEBUG) printf("\nAggregating\n");
+        if(DEBUG_PRINT) printf("\nAggregating\n");
         ret = aggregation(rcv_msg, global_eid, secure); 
     }
     else {
-        if(DEBUG) printf("\nPublishing without processing\n");
+        if(DEBUG_PRINT) printf("\nPublishing without processing\n");
         ret = no_processing(rcv_msg, global_eid, secure); 
     }
 
     // Send response
     free(rcv_msg.encrypted);
     if(!ret) {
-        if(DEBUG) printf("Sending ack\n");
+        if(DEBUG_PRINT) printf("Sending ack\n");
         res.set_content("0", "text/plain");
     }
 

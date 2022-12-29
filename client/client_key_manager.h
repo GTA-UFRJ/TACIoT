@@ -21,6 +21,6 @@ int read_identity(client_identity_t* );
 
 int write_identity(client_identity_t );
 
-int configure_device(client_identity_t );
+//int configure_device(client_identity_t );
 
 #endif

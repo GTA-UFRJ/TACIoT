@@ -30,8 +30,8 @@ int initialize_ap_server ()
     // Receive publication message from sensor
     ap_local_server.Get(R"(/smart-meter?(\d+))", [&](const Request& req, Response& res) {
 
-        if(DEBUG) printf("\n---------------------------------------\n");
-        if(DEBUG) printf("Received update message from smart meter sensor\n");
+        if(DEBUG_PRINT) printf("\n---------------------------------------\n");
+        if(DEBUG_PRINT) printf("Received update message from smart meter sensor\n");
 
         // Pick access point ID and CC
         client_identity_t id;
@@ -70,6 +70,7 @@ int initialize_ap_server ()
         // Send response
         char return_message [3];
         sprintf(return_message, "%02d", (int)ret);
+        printf("%s\n", return_message);
         res.set_content(return_message, "text/plain");
 
         return ret;
@@ -78,8 +79,8 @@ int initialize_ap_server ()
     // Receive key configuration message form user equipament
     ap_local_server.Get(R"(/configure-ap-key/size=(\d+)/(.*))", [&](const Request& req, Response& res) {
 
-        if(DEBUG) printf("\n---------------------------------------\n");
-        if(DEBUG) printf("Received key configuration message from user equipament\n");
+        if(DEBUG_PRINT) printf("\n---------------------------------------\n");
+        if(DEBUG_PRINT) printf("Received key configuration message from user equipament\n");
 
         // Get message sent in HTTP header
         char* snd_msg = (char*)malloc(URL_MAX_SIZE);
@@ -98,7 +99,7 @@ int initialize_ap_server ()
         if(ret)
             return ret;
 
-        ret = configure_device(client_id);
+        ret = write_identity(client_id);
         printf("Configured successfully\n");
 
         // Send response
@@ -112,8 +113,8 @@ int initialize_ap_server ()
     // Receive default access permissions configuration message form user equipament
     ap_local_server.Get(R"(/configure-ap-perms/size=(\d+)/(.*))", [&](const Request& req, Response& res) {
 
-        if(DEBUG) printf("\n---------------------------------------\n");
-        if(DEBUG) printf("Received access permissions configuration message from user equipament\n");
+        if(DEBUG_PRINT) printf("\n---------------------------------------\n");
+        if(DEBUG_PRINT) printf("Received access permissions configuration message from user equipament\n");
 
         // Get message sent in HTTP header
         char* snd_msg = (char*)malloc(URL_MAX_SIZE);

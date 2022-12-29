@@ -48,8 +48,8 @@ int main (int argc, char** argv)
 
     bool secure = (*argv[1]=='i' ? false : true);  
 
-    if(DEBUG == true) printf("---------------------------------------\nInitialized server ");
-    if(DEBUG == true) secure ? printf("(secure mode)\n") : printf("(insecure mode)\n");
+    if(DEBUG_PRINT == true) printf("---------------------------------------\nInitialized server ");
+    if(DEBUG_PRINT == true) secure ? printf("(secure mode)\n") : printf("(insecure mode)\n");
 
     // Initialize database
     /* if(configure_database()) {
@@ -74,19 +74,19 @@ int main (int argc, char** argv)
     if (sgx_ret<0)
         return print_error_message(ENCALVE_INIT_ERROR);
 
-    if(DEBUG == true) printf("Initialized enclave\n");
+    if(DEBUG_PRINT == true) printf("Initialized enclave\n");
 
     svr.Get(R"(/publish/size=(\d+)/(.*))", [&](const Request& req, Response& res) {
 
         // Simulate latency 
         std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
 
-        if(DEBUG) printf("\n---------------------------------------\n");
-        if(DEBUG) printf("Received publication message\n");
+        if(DEBUG_PRINT) printf("\n---------------------------------------\n");
+        if(DEBUG_PRINT) printf("Received publication message\n");
 
         server_error_t ret = server_publish(secure, req, res, global_eid);
         if(ret) {
-            if(DEBUG) printf("\nSending error message to client\n");
+            if(DEBUG_PRINT) printf("\nSending error message to client\n");
 
             char return_message [3];
             sprintf(return_message, "%02d", (int)ret);
@@ -101,12 +101,12 @@ int main (int argc, char** argv)
         // Simulate latency 
         std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
         
-        if(DEBUG) printf("\n---------------------------------------\n");
-        if(DEBUG) printf("Received query message\n");
+        if(DEBUG_PRINT) printf("\n---------------------------------------\n");
+        if(DEBUG_PRINT) printf("Received query message\n");
 
         server_error_t ret = server_query(secure, req, res, global_eid);
         if(ret){
-            if(DEBUG) printf("\nSending error message\n");
+            if(DEBUG_PRINT) printf("\nSending error message\n");
 
             char return_message [3];
             sprintf(return_message, "%02d", (int)ret);
@@ -121,11 +121,11 @@ int main (int argc, char** argv)
         // Simulate latency 
         std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
         
-        if(DEBUG) printf("\n---------------------------------------\n");
-        if(DEBUG) printf("Received revocation message\n");
+        if(DEBUG_PRINT) printf("\n---------------------------------------\n");
+        if(DEBUG_PRINT) printf("Received revocation message\n");
 
         if(server_error_t ret = server_revoke(secure, req, res, global_eid)){
-            if(DEBUG) printf("Sending error message\n");
+            if(DEBUG_PRINT) printf("Sending error message\n");
 
             char return_message [3];
             sprintf(return_message, "%02d", (int)ret);
@@ -149,7 +149,7 @@ int main (int argc, char** argv)
         std::this_thread::sleep_for(std::chrono::milliseconds(LATENCY_MS));
         
         if(server_error_t ret = server_register(secure, req, res, global_eid)){
-            if(DEBUG) printf("Sending error message\n");
+            if(DEBUG_PRINT) printf("Sending error message\n");
 
             char return_message [3];
             sprintf(return_message, "%02d", (int)ret);

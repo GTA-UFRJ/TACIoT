@@ -16,7 +16,7 @@ server_error_t get_stored_parameters(char* msg, stored_data_t* p_stored)
 {
     Timer t("get_stored_parameters");
 
-    if(DEBUG) printf("\nParsing stored data fields\n");
+    if(DEBUG_PRINT) printf("\nParsing stored data fields\n");
 
     // type|123456|pk|72d41281|size|0x54|encrypted|0x62-
     char* token = strtok_r(msg, "|", &msg);
@@ -31,7 +31,7 @@ server_error_t get_stored_parameters(char* msg, stored_data_t* p_stored)
             memcpy(p_stored->type, token, 6);
             p_stored->type[6] = '\0';
 
-            if(DEBUG) printf("type: %s\n", p_stored->type);
+            if(DEBUG_PRINT) printf("type: %s\n", p_stored->type);
         }
 
         // Get client key       
@@ -39,13 +39,13 @@ server_error_t get_stored_parameters(char* msg, stored_data_t* p_stored)
             memcpy(p_stored->pk, token, 8);
             p_stored->pk[8] = '\0';
 
-            if(DEBUG) printf("pk: %s\n", p_stored->pk);
+            if(DEBUG_PRINT) printf("pk: %s\n", p_stored->pk);
         }
 
         // Get encrypted message size
         if (i == 5) {
             p_stored->encrypted_size = (uint32_t)strtoul(token,NULL,16);
-            if(DEBUG) printf("encrypted_size: %u\n", p_stored->encrypted_size);
+            if(DEBUG_PRINT) printf("encrypted_size: %u\n", p_stored->encrypted_size);
         }
     }
 
@@ -59,7 +59,7 @@ server_error_t get_stored_parameters(char* msg, stored_data_t* p_stored)
     return OK;
 }
 
-int write_key(uint8_t* ck, uint32_t ck_size, char* filename) 
+server_error_t write_key(uint8_t* ck, uint32_t ck_size, char* filename) 
 {
     Timer t("write_key");    
 
@@ -71,7 +71,7 @@ int write_key(uint8_t* ck, uint32_t ck_size, char* filename)
     if (file == NULL) {
         printf("\nFailed to open the key file %s\n", filename);
         fclose(file);
-        return -1;
+        print_error_message(KEY_REGISTRATION_ERROR);
     }
     fwrite(ck, 1, (size_t)ck_size, file);
     fclose(file);
@@ -79,5 +79,5 @@ int write_key(uint8_t* ck, uint32_t ck_size, char* filename)
     // Next thread gets the lock at the start of the function
     thread_sync.unlock();
     
-    return 0;
+    return OK;
 }

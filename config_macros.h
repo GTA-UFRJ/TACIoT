@@ -4,8 +4,8 @@
  * Descripton: configuration flags
  */
 
-#ifndef DEBUG 
-#define DEBUG 1
+#ifndef DEBUG_PRINT 
+#define DEBUG_PRINT 1
 #endif
 
 #ifndef TOKENS_PATH
@@ -169,5 +169,5 @@
 #endif
 
 #ifndef AP_PORT
-#define AP_PORT 7777
+#define AP_PORT 50000
 #endif

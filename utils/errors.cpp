@@ -143,7 +143,16 @@ server_error_t print_error_message(server_error_t error) {
         fprintf(out_stream, "Invalid error code formatation received from server\n");
         break;
 
+        case ALREDY_REGISTERED_ERROR:
+        fprintf(out_stream, "Alredy registered client ID\n");
+        break;
+
+        case KEY_REGISTRATION_ERROR:
+        fprintf(out_stream, "Could not save client key\n");
+        break;
+
         default:
+        fprintf(out_stream, "Unknown error\n");
         break;
     }
 

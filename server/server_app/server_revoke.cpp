@@ -41,7 +41,7 @@ server_error_t parse_revocation(char* msg, access_message_t* p_rcv_msg)
 {
     Timer t("parse_revokation");
     
-    if(DEBUG) printf("Parsing message fields\n");
+    if(DEBUG_PRINT) printf("Parsing message fields\n");
     
     char* token = strtok_r(msg, "|", &msg);
     int i = 0;
@@ -57,7 +57,7 @@ server_error_t parse_revocation(char* msg, access_message_t* p_rcv_msg)
             memcpy(p_rcv_msg->pk, token, 8);
             p_rcv_msg->pk[8] = '\0';
 
-            if(DEBUG) printf("pk: %s\n", p_rcv_msg->pk);
+            if(DEBUG_PRINT) printf("pk: %s\n", p_rcv_msg->pk);
         }
 
         // Get data index
@@ -70,7 +70,7 @@ server_error_t parse_revocation(char* msg, access_message_t* p_rcv_msg)
                 return INVALID_INDEX_FIELD_ERROR;
             }
            
-            if(DEBUG) printf("index: %u\n", p_rcv_msg->index); 
+            if(DEBUG_PRINT) printf("index: %u\n", p_rcv_msg->index); 
         }
         // Get command size
         if (i == 5) {
@@ -81,7 +81,7 @@ server_error_t parse_revocation(char* msg, access_message_t* p_rcv_msg)
                 return INVALID_COMMAND_SIZE_FIELD_ERROR;
             }
 
-            if(DEBUG) printf("command_size: %u\n", p_rcv_msg->command_size);
+            if(DEBUG_PRINT) printf("command_size: %u\n", p_rcv_msg->command_size);
         }
 
         // Get command 
@@ -91,13 +91,13 @@ server_error_t parse_revocation(char* msg, access_message_t* p_rcv_msg)
             memcpy(p_rcv_msg->command, token, p_rcv_msg->command_size);
             p_rcv_msg->command[p_rcv_msg->command_size] = 0;
 
-            if(DEBUG) printf("command: %s\n", p_rcv_msg->command);
+            if(DEBUG_PRINT) printf("command: %s\n", p_rcv_msg->command);
         }
         
         // Get encrypted 
         if (i == 9) {
 
-            if(DEBUG) printf("encrypted pk: ");
+            if(DEBUG_PRINT) printf("encrypted pk: ");
 
             for (uint32_t j=0; j<8+12+16; j++){
                 auxiliar[0] = token[3*j];
@@ -111,10 +111,10 @@ server_error_t parse_revocation(char* msg, access_message_t* p_rcv_msg)
                     return INVALID_ENCRYPTED_FIELD_ERROR;
                 }
 
-                if(DEBUG) printf("%02x,", (unsigned)p_rcv_msg->encrypted[j]);
+                if(DEBUG_PRINT) printf("%02x,", (unsigned)p_rcv_msg->encrypted[j]);
             }
             p_rcv_msg->encrypted[8+12+16] = '\0';
-            if(DEBUG) printf("\n");
+            if(DEBUG_PRINT) printf("\n");
         }
     }
 
@@ -140,14 +140,14 @@ server_error_t get_revocation_message(const Request& req, char* snd_msg, uint32_
         return HTTP_MESSAGE_SIZE_OVERFLOW_ERROR;
     }
 
-    if(DEBUG) printf("Size: %u\n", *p_size);
+    if(DEBUG_PRINT) printf("Size: %u\n", *p_size);
 
     std::string message_field = req.matches[2].str();
 
     strncpy(snd_msg, message_field.c_str(), (size_t)(*p_size-1));
     snd_msg[*p_size] = '\0';
     
-    if(DEBUG) printf("Message: %s\n\n", snd_msg);
+    if(DEBUG_PRINT) printf("Message: %s\n\n", snd_msg);
 
     return OK;
 }
@@ -168,7 +168,7 @@ server_error_t enclave_verify_deletion(stored_data_t stored,
     sprintf(seal_path, "%s/%s", SEALS_PATH, rcv_msg.pk);
     uint8_t* sealed_revoker_key = (uint8_t*)malloc(sealed_size);
 
-    if(DEBUG) printf("Reading revoker key file: %s\n", seal_path);
+    if(DEBUG_PRINT) printf("Reading revoker key file: %s\n", seal_path);
 
     FILE* seal_file = fopen(seal_path, "rb");
     if (seal_file == NULL) {
@@ -185,7 +185,7 @@ server_error_t enclave_verify_deletion(stored_data_t stored,
     sprintf(seal_path, "%s/storage_key", SEALS_PATH);
     uint8_t* sealed_storage_key = (uint8_t*)malloc(sealed_size);
 
-    if(DEBUG) printf("Reading storage key file: %s\n", seal_path);
+    if(DEBUG_PRINT) printf("Reading storage key file: %s\n", seal_path);
 
     seal_file = fopen(seal_path, "rb");
     if (seal_file == NULL) {
@@ -203,7 +203,7 @@ server_error_t enclave_verify_deletion(stored_data_t stored,
     // Call enclave to decrypt pk and stored data 
     {
     Timer t2("revoke_data");
-    if(DEBUG) printf("Entering enclave\n");
+    if(DEBUG_PRINT) printf("Entering enclave\n");
 
     sgx_status_t ret;
     sgx_status_t ecall_status;
@@ -216,7 +216,7 @@ server_error_t enclave_verify_deletion(stored_data_t stored,
         rcv_msg.pk,
         access_allowed);
 
-    if(DEBUG) printf("Exiting enclave\n");
+    if(DEBUG_PRINT) printf("Exiting enclave\n");
 
     if(ret != SGX_SUCCESS || ecall_status != SGX_SUCCESS) {
         printf("\n(sec) Enclave problem inside retrieve_data:\n");
@@ -249,7 +249,7 @@ server_error_t verify_deletion(stored_data_t stored, access_message_t rcv_msg, u
     sprintf(path, "%s/%s_i", SEALS_PATH, rcv_msg.pk);
     uint8_t* revoker_key = (uint8_t*)malloc(size);
 
-    if(DEBUG) printf("Reading revoker key file: %s\n", path);
+    if(DEBUG_PRINT) printf("Reading revoker key file: %s\n", path);
 
     FILE* file = fopen(path, "rb");
     if (file == NULL) {
@@ -263,7 +263,7 @@ server_error_t verify_deletion(stored_data_t stored, access_message_t rcv_msg, u
     }
 
     // Decrypt pk 
-    if(DEBUG) printf("Decrypting pk: ");
+    if(DEBUG_PRINT) printf("Decrypting pk: ");
 
     uint32_t recovered_pk_size = 8;
     uint8_t* recovered_pk = (uint8_t*)malloc(1+recovered_pk_size*sizeof(uint8_t));
@@ -280,7 +280,7 @@ server_error_t verify_deletion(stored_data_t stored, access_message_t rcv_msg, u
         return MESSAGE_DECRYPTION_ERROR;
     }
     recovered_pk[recovered_pk_size] = 0;
-    if(DEBUG) printf("%s\n", recovered_pk);
+    if(DEBUG_PRINT) printf("%s\n", recovered_pk);
 
     // Verify if pks are equals
     if(strcmp(rcv_msg.pk, (char*)recovered_pk)){
@@ -297,7 +297,7 @@ server_error_t verify_deletion(stored_data_t stored, access_message_t rcv_msg, u
     sprintf(path, "%s/storage_key_i", SEALS_PATH);
     uint8_t* storage_key = (uint8_t*)malloc(size);
 
-    if(DEBUG) printf("Reading storage key file: %s\n", path);
+    if(DEBUG_PRINT) printf("Reading storage key file: %s\n", path);
 
     file = fopen(path, "rb");
     if (file == NULL) {
@@ -311,7 +311,7 @@ server_error_t verify_deletion(stored_data_t stored, access_message_t rcv_msg, u
     }
 
     // Decrypt stored data
-    if(DEBUG) printf("Decrypting data: ");
+    if(DEBUG_PRINT) printf("Decrypting data: ");
 
     uint32_t plain_data_size = MAX_DATA_SIZE;
     uint8_t* plain_data = (uint8_t*)malloc(1+plain_data_size*sizeof(uint8_t));
@@ -327,7 +327,7 @@ server_error_t verify_deletion(stored_data_t stored, access_message_t rcv_msg, u
         return DATA_DECRYPTION_ERROR;
     }
     plain_data[plain_data_size] = 0;
-    if(DEBUG) printf("%s\n", plain_data);
+    if(DEBUG_PRINT) printf("%s\n", plain_data);
 
     // Verify if client is the owner of the data
     if(strncmp((char*)plain_data+3, rcv_msg.pk, 8)) {
@@ -366,7 +366,7 @@ server_error_t server_revoke(bool secure, const Request& req, Response& res, sgx
     // Thread open dedicated database connection 
     sqlite3 *db;
 
-    if(DEBUG) printf("Opening dabase\n"); 
+    if(DEBUG_PRINT) printf("Opening dabase\n"); 
 
     if(sqlite3_open(DATABASE_PATH, &db)) {
        printf("Can't open database: %s\n", sqlite3_errmsg(db));
@@ -418,12 +418,12 @@ server_error_t server_revoke(bool secure, const Request& req, Response& res, sgx
     }
 
     if (!access_allowed) {
-        if(DEBUG) printf("\nAccess denied\n");
+        if(DEBUG_PRINT) printf("\nAccess denied\n");
         free(message.encrypted);
         return ret;
     } 
     else {
-        if(DEBUG) printf("\nAccess accepted\n");
+        if(DEBUG_PRINT) printf("\nAccess accepted\n");
         if((ret = database_delete(db, message))){
             free(message.encrypted);
             return ret;

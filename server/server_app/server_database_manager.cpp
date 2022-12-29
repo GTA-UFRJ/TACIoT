@@ -80,7 +80,7 @@ server_error_t database_write(sqlite3* db, iot_message_t rcv_msg)
 {
     Timer t("database_write");
 
-    if(DEBUG) printf("\nWriting to dabase\n"); 
+    if(DEBUG_PRINT) printf("\nWriting to dabase\n"); 
 
     // Format encrypted message for publication
     char auxiliar[4];
@@ -98,7 +98,7 @@ server_error_t database_write(sqlite3* db, iot_message_t rcv_msg)
     "VALUES ('%s','%s',%u,'%s');",
     rcv_msg.type, rcv_msg.pk, rcv_msg.encrypted_size, enc_write);
     
-    if(DEBUG) printf("SQL insert statement: %s\n", insert_sql_statement); 
+    if(DEBUG_PRINT) printf("SQL insert statement: %s\n", insert_sql_statement); 
 
     // Execute SQL statetment for inserting data (without callback function)
     char *error_message = 0;
@@ -137,7 +137,7 @@ server_error_t database_delete(sqlite3* db, stored_data_t stored_message)
     stored_message.type, stored_message.pk, stored_message.encrypted_size, encrypted);
     free(encrypted);
 
-    if(DEBUG) printf("SQL delete statement: %s\n", delete_sql_statement); 
+    if(DEBUG_PRINT) printf("SQL delete statement: %s\n", delete_sql_statement); 
 
     // Execute SQL statetment for inserting data (without callback function)
     char *error_message = 0;
@@ -161,9 +161,9 @@ server_error_t database_read(sqlite3* db, char* command, char** datas, uint32_t*
 {
     Timer t("database_read");
    
-    if(DEBUG) printf("\nReading from database\n");
+    if(DEBUG_PRINT) printf("\nReading from database\n");
 
-    if(DEBUG) printf("SQL read statement: %s\n", command); 
+    if(DEBUG_PRINT) printf("SQL read statement: %s\n", command); 
 
     // Replace "_" in command by SPACE character and panic if it finds a ";"
     for(unsigned i=0; i<strlen(command); i++) {

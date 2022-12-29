@@ -38,9 +38,9 @@ using namespace httplib;
 server_error_t parse_query(char* msg, access_message_t* p_rcv_msg)
 {
     Timer t("parse_query");
-    if(DEBUG) printf("\nParsing query message fields\n");
+    if(DEBUG_PRINT) printf("\nParsing query message fields\n");
 
-    if(DEBUG) printf("Parsing message fields\n");
+    if(DEBUG_PRINT) printf("Parsing message fields\n");
 
     char* token = strtok_r(msg, "|", &msg);
     int i = 0;
@@ -56,7 +56,7 @@ server_error_t parse_query(char* msg, access_message_t* p_rcv_msg)
             memcpy(p_rcv_msg->pk, token, 8);
             p_rcv_msg->pk[8] = '\0';
 
-            if(DEBUG) printf("pk: %s\n", p_rcv_msg->pk);
+            if(DEBUG_PRINT) printf("pk: %s\n", p_rcv_msg->pk);
         }
 
         // Get data index
@@ -67,7 +67,7 @@ server_error_t parse_query(char* msg, access_message_t* p_rcv_msg)
             if(*invalid_char != 0) 
                 return print_error_message(INVALID_INDEX_FIELD_ERROR);
            
-            if(DEBUG) printf("index: %u\n", p_rcv_msg->index); 
+            if(DEBUG_PRINT) printf("index: %u\n", p_rcv_msg->index); 
         }
         // Get command size
         if (i == 5) {
@@ -78,7 +78,7 @@ server_error_t parse_query(char* msg, access_message_t* p_rcv_msg)
                 return INVALID_COMMAND_SIZE_FIELD_ERROR;
             }
 
-            if(DEBUG) printf("command_size: %u\n", p_rcv_msg->command_size);
+            if(DEBUG_PRINT) printf("command_size: %u\n", p_rcv_msg->command_size);
         }
 
         // Get command 
@@ -88,13 +88,13 @@ server_error_t parse_query(char* msg, access_message_t* p_rcv_msg)
             memcpy(p_rcv_msg->command, token, p_rcv_msg->command_size);
             p_rcv_msg->command[p_rcv_msg->command_size] = 0;
 
-            if(DEBUG) printf("command: %s\n", p_rcv_msg->command);
+            if(DEBUG_PRINT) printf("command: %s\n", p_rcv_msg->command);
         }
         
         // Get encrypted 
         if (i == 9) {
 
-            if(DEBUG) printf("encrypted pk: ");
+            if(DEBUG_PRINT) printf("encrypted pk: ");
 
             for (uint32_t j=0; j<8+12+16; j++){
                 auxiliar[0] = token[3*j];
@@ -107,10 +107,10 @@ server_error_t parse_query(char* msg, access_message_t* p_rcv_msg)
                     return print_error_message(INVALID_ENCRYPTED_FIELD_ERROR);
                 }
 
-                if(DEBUG) printf("%02x,", (unsigned)p_rcv_msg->encrypted[j]);
+                if(DEBUG_PRINT) printf("%02x,", (unsigned)p_rcv_msg->encrypted[j]);
             }
             p_rcv_msg->encrypted[8+12+16] = '\0';
-            if(DEBUG) printf("\n");
+            if(DEBUG_PRINT) printf("\n");
         }
     }
     return OK;
@@ -119,7 +119,7 @@ server_error_t parse_query(char* msg, access_message_t* p_rcv_msg)
 server_error_t get_query_message(const Request& req, char* snd_msg, uint32_t* p_size)
 {
     Timer t("get_query_message");
-    if(DEBUG) printf("\nGetting query message fields:\n");
+    if(DEBUG_PRINT) printf("\nGetting query message fields:\n");
 
     std::string size_field = req.matches[1].str();
 
@@ -133,14 +133,14 @@ server_error_t get_query_message(const Request& req, char* snd_msg, uint32_t* p_
     if(*p_size > URL_MAX_SIZE)
         return print_error_message(HTTP_MESSAGE_SIZE_OVERFLOW_ERROR);
 
-    if(DEBUG) printf("Size: %u\n", *p_size);
+    if(DEBUG_PRINT) printf("Size: %u\n", *p_size);
 
     std::string message_field = req.matches[2].str();
 
     strncpy(snd_msg, message_field.c_str(), (size_t)(*p_size-1));
     snd_msg[*p_size] = '\0';
 
-    if(DEBUG) printf("Message: %s\n\n", snd_msg);
+    if(DEBUG_PRINT) printf("Message: %s\n\n", snd_msg);
 
     return OK;
 }
@@ -159,7 +159,7 @@ server_error_t enclave_get_response(stored_data_t stored,
     char* querier_seal_path = (char*)malloc(PATH_MAX_SIZE);
     sprintf(querier_seal_path, "%s/%s", SEALS_PATH, rcv_msg.pk);
 
-    if(DEBUG) printf("\nReading querier key file: %s\n", querier_seal_path);
+    if(DEBUG_PRINT) printf("\nReading querier key file: %s\n", querier_seal_path);
 
     FILE* querier_seal_file = fopen(querier_seal_path, "rb");
     free(querier_seal_path);
@@ -176,7 +176,7 @@ server_error_t enclave_get_response(stored_data_t stored,
     char* storage_seal_path = (char*)malloc(PATH_MAX_SIZE);
     sprintf(storage_seal_path, "%s/storage_key", SEALS_PATH);
 
-    if(DEBUG) printf("\nReading storage key file: %s\n", storage_seal_path);
+    if(DEBUG_PRINT) printf("\nReading storage key file: %s\n", storage_seal_path);
 
     FILE* storage_seal_file = fopen(storage_seal_path, "rb");
     free(storage_seal_path);
@@ -197,7 +197,7 @@ server_error_t enclave_get_response(stored_data_t stored,
     {
     Timer t2("retrieve_data");
 
-    if(DEBUG) printf("\nEntering enclave to verify access permissions\n");
+    if(DEBUG_PRINT) printf("\nEntering enclave to verify access permissions\n");
 
     sgx_status_t ret;
     sgx_status_t ecall_status;
@@ -210,7 +210,7 @@ server_error_t enclave_get_response(stored_data_t stored,
         rcv_msg.pk,
         response,
         access_allowed);
-    if(DEBUG) printf("Exiting enclave\n");
+    if(DEBUG_PRINT) printf("Exiting enclave\n");
 
     free(querier_sealed_data);
     free(storage_sealed_data);
@@ -239,7 +239,7 @@ server_error_t get_response(stored_data_t stored,
     char* querier_key_path = (char*)malloc(PATH_MAX_SIZE);
     sprintf(querier_key_path, "%s/%s_i", SEALS_PATH, rcv_msg.pk);
 
-    if(DEBUG) printf("\nReading querier key file: %s\n", querier_key_path);
+    if(DEBUG_PRINT) printf("\nReading querier key file: %s\n", querier_key_path);
 
     FILE* querier_key_file = fopen(querier_key_path, "rb");
     free(querier_key_path);
@@ -253,7 +253,7 @@ server_error_t get_response(stored_data_t stored,
 
 
     // Decrypt pk 
-    if(DEBUG) printf("\nDecrypting pk\n");
+    if(DEBUG_PRINT) printf("\nDecrypting pk\n");
 
     uint32_t recovered_pk_size = 8;
     uint8_t* recovered_pk = (uint8_t*)malloc(1+recovered_pk_size*sizeof(uint8_t));
@@ -268,7 +268,7 @@ server_error_t get_response(stored_data_t stored,
         return print_error_message(MESSAGE_DECRYPTION_ERROR);
     }
     recovered_pk[recovered_pk_size] = 0;
-    if(DEBUG) printf("Recovered pk: %s\n", recovered_pk);
+    if(DEBUG_PRINT) printf("Recovered pk: %s\n", recovered_pk);
 
 
     // Verify if pks are equals
@@ -281,7 +281,7 @@ server_error_t get_response(stored_data_t stored,
     char* storage_key_path = (char*)malloc(PATH_MAX_SIZE);
     sprintf(storage_key_path, "%s/storage_key_i", SEALS_PATH);
 
-    if(DEBUG) printf("\nReading storage key file: %s\n", storage_key_path);
+    if(DEBUG_PRINT) printf("\nReading storage key file: %s\n", storage_key_path);
 
     FILE* storage_key_file = fopen(storage_key_path, "rb");
     free(storage_key_path);
@@ -297,7 +297,7 @@ server_error_t get_response(stored_data_t stored,
     
 
     // Decrypt stored data
-    if(DEBUG) printf("\nDecrypting stored data\n");
+    if(DEBUG_PRINT) printf("\nDecrypting stored data\n");
 
     uint32_t plain_data_size = MAX_DATA_SIZE;
     uint8_t* plain_data = (uint8_t*)malloc(plain_data_size*sizeof(uint8_t));
@@ -313,11 +313,11 @@ server_error_t get_response(stored_data_t stored,
         return print_error_message(DATA_DECRYPTION_ERROR);
     }
     plain_data[plain_data_size] = 0;
-    if(DEBUG) printf("%s\n", plain_data);
+    if(DEBUG_PRINT) printf("%s\n", plain_data);
 
 
     // Verify access permissions
-    if(DEBUG) printf("\nVerifying access permissions\n");
+    if(DEBUG_PRINT) printf("\nVerifying access permissions\n");
     
     // pk|72d41281|type|123456|payload|250|permission1|72d41281
     char* text = (char*)malloc(1+plain_data_size);
@@ -344,7 +344,7 @@ server_error_t get_response(stored_data_t stored,
     free(text);
 
     // Encrypt data with querier key
-    if(DEBUG) printf("\nEncrypting data with querier pk\n");
+    if(DEBUG_PRINT) printf("\nEncrypting data with querier pk\n");
 
     uint32_t response_size = stored.encrypted_size;
     if (*access_allowed) { 
@@ -374,7 +374,7 @@ void make_response(uint8_t* enc_data, uint32_t enc_data_size, char* response)
     }
     response[15+enc_data_size*3] = '\0';
     
-    if(DEBUG) printf("Sending message: %s\n", response);
+    if(DEBUG_PRINT) printf("Sending message: %s\n", response);
 }
 
 server_error_t server_query(bool secure, const Request& req, Response& res, sgx_enclave_id_t global_eid)
@@ -401,7 +401,7 @@ server_error_t server_query(bool secure, const Request& req, Response& res, sgx_
     // Thread open dedicated database connection 
     sqlite3 *db;
 
-    if(DEBUG) printf("\nOpening dabase\n"); 
+    if(DEBUG_PRINT) printf("\nOpening dabase\n"); 
 
     if(sqlite3_open(DATABASE_PATH, &db)) {
        printf("SQL error: %s\n", sqlite3_errmsg(db));
@@ -449,7 +449,7 @@ server_error_t server_query(bool secure, const Request& req, Response& res, sgx_
         ret = get_response(message, enc_data, rcv_msg, &access_allowed);
 
     if(!ret) {
-        if(DEBUG) printf("\nAccess accepted\n");
+        if(DEBUG_PRINT) printf("\nAccess accepted\n");
         make_response(enc_data, message.encrypted_size, response);
         res.set_content(response, "text/plain");
     }

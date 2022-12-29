@@ -15,6 +15,7 @@
 #include "client_query.h"
 #include "client_apnet.h"
 #include "client_uenet.h"
+#include "client_register.h"
 #include "config_macros.h" 
 #include "utils.h" 
 #include "errors.h"
@@ -286,8 +287,16 @@ int main (int argc, char *argv[]) {
             if(byte_auxiliar != 0 && *invalid_char != 0) 
                 return (int)print_error_message(INVALID_ENCRYPTED_FIELD_ERROR);
         }
+        //debug_print_encrypted(16, (uint8_t*)(id.comunication_key));
 
-        return configure_device(id);
+        //return configure_device(id);
+        // Write identity into a file
+        ret = write_identity(id);
+        if (ret) 
+            return ret;
+
+        // Register client in the server
+        return client_register(id);    
     }
 
     else if (!strcmp(argv[1],"register_ap")) {

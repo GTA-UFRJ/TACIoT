@@ -54,7 +54,7 @@ static int callback_perms(void* received_from_exec, int , char** columns_values,
 // type|123456|permission1|72d41281|...
 int parse_configure_perms_message(char* msg, default_perms_t* p_rcv_perms) {
 
-    if(DEBUG) printf("\nParsing publication message fields\n");
+    if(DEBUG_PRINT) printf("\nParsing publication message fields\n");
     
     int permission_count = 0;
     p_rcv_perms->permissions_list = (char**)malloc(MAX_NUM_PERMISSIONS*sizeof(char*));
@@ -71,7 +71,7 @@ int parse_configure_perms_message(char* msg, default_perms_t* p_rcv_perms) {
             memcpy(p_rcv_perms->type, token, 6);
             p_rcv_perms->type[6] = '\0';
 
-            if(DEBUG) printf("type: %s\n", p_rcv_perms->type);
+            if(DEBUG_PRINT) printf("type: %s\n", p_rcv_perms->type);
         }
 
         // Get permissions list
@@ -88,7 +88,7 @@ int parse_configure_perms_message(char* msg, default_perms_t* p_rcv_perms) {
 
 int get_configure_perms_message(const httplib::Request& req, char* snd_msg, uint32_t* p_size) {
 
-    if(DEBUG) printf("\nGetting configure access permissions message fields:\n");
+    if(DEBUG_PRINT) printf("\nGetting configure access permissions message fields:\n");
 
     std::string size_field = req.matches[1].str();
 
@@ -102,14 +102,14 @@ int get_configure_perms_message(const httplib::Request& req, char* snd_msg, uint
     if(*p_size > URL_MAX_SIZE)
         return (int)print_error_message(HTTP_MESSAGE_SIZE_OVERFLOW_ERROR);
 
-    if(DEBUG) printf("Size: %u\n", *p_size);
+    if(DEBUG_PRINT) printf("Size: %u\n", *p_size);
 
     std::string message_field = req.matches[2].str();
 
     strncpy(snd_msg, message_field.c_str(), (size_t)(*p_size-1));
     snd_msg[*p_size] = '\0';
     
-    if(DEBUG) printf("Message: %s\n", snd_msg);
+    if(DEBUG_PRINT) printf("Message: %s\n", snd_msg);
 
     return OK;
 }

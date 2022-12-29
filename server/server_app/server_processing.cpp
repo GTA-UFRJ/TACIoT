@@ -19,7 +19,7 @@ server_error_t no_processing_s(iot_message_t rcv_msg, sgx_enclave_id_t global_ei
     char* publisher_seal_path = (char*)malloc(PATH_MAX_SIZE);
     sprintf(publisher_seal_path, "%s/%s", SEALS_PATH, rcv_msg.pk);
 
-    if(DEBUG) printf("\nReading publisher key file: %s\n", publisher_seal_path);
+    if(DEBUG_PRINT) printf("\nReading publisher key file: %s\n", publisher_seal_path);
 
     FILE* publisher_seal_file = fopen(publisher_seal_path, "rb");
     free(publisher_seal_path);
@@ -35,7 +35,7 @@ server_error_t no_processing_s(iot_message_t rcv_msg, sgx_enclave_id_t global_ei
     char* storage_seal_path = (char*)malloc(PATH_MAX_SIZE);
     sprintf(storage_seal_path, "%s/storage_key", SEALS_PATH);
 
-    if(DEBUG) printf("\nReading storage key file: %s\n", storage_seal_path);
+    if(DEBUG_PRINT) printf("\nReading storage key file: %s\n", storage_seal_path);
 
     FILE* storage_seal_file = fopen(storage_seal_path, "rb");
     free(storage_seal_path);
@@ -55,7 +55,7 @@ server_error_t no_processing_s(iot_message_t rcv_msg, sgx_enclave_id_t global_ei
 
     {
     Timer t2("process_data");
-    if(DEBUG) printf("\nEntering enclave for preparing data for publication\n");
+    if(DEBUG_PRINT) printf("\nEntering enclave for preparing data for publication\n");
 
     sgx_status = process_data(global_eid, &ecall_status,
         (sgx_sealed_data_t*)publisher_sealed_data,  //sealed key 
@@ -68,7 +68,7 @@ server_error_t no_processing_s(iot_message_t rcv_msg, sgx_enclave_id_t global_ei
         p_real_size                                 //data real size           
     );
 
-    if(DEBUG) printf("Exiting enclave\n");
+    if(DEBUG_PRINT) printf("Exiting enclave\n");
 
     free(publisher_sealed_data);    
     free(storage_sealed_data);
@@ -92,7 +92,7 @@ server_error_t no_processing_i(iot_message_t rcv_msg, uint8_t* processed_data, u
     char* publihser_key_path = (char*)malloc(PATH_MAX_SIZE);
     sprintf(publihser_key_path, "%s/%s_i", SEALS_PATH, rcv_msg.pk);
 
-    if(DEBUG) printf("\nReading publisher key file: %s\n", publihser_key_path);
+    if(DEBUG_PRINT) printf("\nReading publisher key file: %s\n", publihser_key_path);
 
     FILE* publisher_key_file = fopen(publihser_key_path, "rb");
     free(publihser_key_path);
@@ -108,7 +108,7 @@ server_error_t no_processing_i(iot_message_t rcv_msg, uint8_t* processed_data, u
     char* storage_key_path = (char*)malloc(PATH_MAX_SIZE);
     sprintf(storage_key_path, "%s/storage_key_i", SEALS_PATH);
 
-    if(DEBUG) printf("\nReading storage key file: %s\n", storage_key_path);
+    if(DEBUG_PRINT) printf("\nReading storage key file: %s\n", storage_key_path);
 
     FILE* storage_key_file = fopen(storage_key_path, "rb");
     free(storage_key_path);
@@ -123,7 +123,7 @@ server_error_t no_processing_i(iot_message_t rcv_msg, uint8_t* processed_data, u
     fclose(storage_key_file);
     
     // Decrypt publisher data with publihser key
-    if(DEBUG) printf("\nDecrypting publisher message\n");
+    if(DEBUG_PRINT) printf("\nDecrypting publisher message\n");
 
     uint32_t decrypted_data_size = MAX_DATA_SIZE;
     uint8_t* decrypted_data = (uint8_t*)malloc(decrypted_data_size);
@@ -149,7 +149,7 @@ server_error_t no_processing_i(iot_message_t rcv_msg, uint8_t* processed_data, u
     }
 
     // Encrypt plaintext publihser data with storage key
-    if(DEBUG) printf("\nEncrypting publisher data\n");
+    if(DEBUG_PRINT) printf("\nEncrypting publisher data\n");
 
     uint32_t encrypted_data_size = rcv_msg.encrypted_size;
     uint8_t* encrypted_data = (uint8_t*)malloc(encrypted_data_size);
@@ -188,7 +188,7 @@ server_error_t no_processing(iot_message_t rcv_msg, sgx_enclave_id_t global_eid,
     // Thread open dedicated database connection 
     sqlite3 *db;
 
-    if(DEBUG) printf("\nOpening dabase\n"); 
+    if(DEBUG_PRINT) printf("\nOpening dabase\n"); 
 
     if(sqlite3_open(DATABASE_PATH, &db)) {
        printf("SQL error: %s\n", sqlite3_errmsg(db));
@@ -222,7 +222,7 @@ server_error_t aggregation_s(sqlite3* db, iot_message_t rcv_msg, uint8_t* proces
     char* publisher_seal_path = (char*)malloc(PATH_MAX_SIZE);
     sprintf(publisher_seal_path, "%s/%s", SEALS_PATH, rcv_msg.pk);
 
-    if(DEBUG) printf("\nReading publisher key file: %s\n", publisher_seal_path);
+    if(DEBUG_PRINT) printf("\nReading publisher key file: %s\n", publisher_seal_path);
 
     FILE* publisher_seal_file = fopen(publisher_seal_path, "rb");
     free(publisher_seal_path);
@@ -238,7 +238,7 @@ server_error_t aggregation_s(sqlite3* db, iot_message_t rcv_msg, uint8_t* proces
     char* storage_seal_path = (char*)malloc(PATH_MAX_SIZE);
     sprintf(storage_seal_path, "%s/storage_key", SEALS_PATH);
 
-    if(DEBUG) printf("\nReading storage key file: %s\n", storage_seal_path);
+    if(DEBUG_PRINT) printf("\nReading storage key file: %s\n", storage_seal_path);
 
     FILE* storage_seal_file = fopen(storage_seal_path, "rb");
     free(storage_seal_path);
@@ -260,7 +260,7 @@ server_error_t aggregation_s(sqlite3* db, iot_message_t rcv_msg, uint8_t* proces
     {
     Timer t2("get_db_request_s");
 
-    if(DEBUG) printf("\nEntering enclave for decrypting publication message\n");
+    if(DEBUG_PRINT) printf("\nEntering enclave for decrypting publication message\n");
 
     sgx_status = get_db_request_s(global_eid, &ecall_status, 
                         rcv_msg.encrypted, 
@@ -270,7 +270,7 @@ server_error_t aggregation_s(sqlite3* db, iot_message_t rcv_msg, uint8_t* proces
                         (sgx_sealed_data_t*)publisher_seal_file, 
                         db_command);
     
-    if(DEBUG) printf("Exiting enclave\n");
+    if(DEBUG_PRINT) printf("Exiting enclave\n");
 
     if(sgx_status != SGX_SUCCESS || ecall_status != SGX_SUCCESS) {
         if(sgx_status == 0x5001) printf("Insuficient result buffer size.");
@@ -304,7 +304,7 @@ server_error_t aggregation_s(sqlite3* db, iot_message_t rcv_msg, uint8_t* proces
     {
     Timer t3("sum_encrypted_data_s");
 
-    if(DEBUG) printf("\nEntering enclave fo aggregating data\n");
+    if(DEBUG_PRINT) printf("\nEntering enclave fo aggregating data\n");
     sgx_status = sum_encrypted_data_s(global_eid, &ecall_status,
             rcv_msg.encrypted,
             rcv_msg.encrypted_size,
@@ -316,7 +316,7 @@ server_error_t aggregation_s(sqlite3* db, iot_message_t rcv_msg, uint8_t* proces
             MAX_DATA_SIZE, 
             processed_data,
             p_real_size);
-    if(DEBUG) printf("Exiting enclave\n");
+    if(DEBUG_PRINT) printf("Exiting enclave\n");
 
     free(publisher_sealed_data);
     free(storage_sealed_data);
@@ -342,7 +342,7 @@ server_error_t aggregation_i(sqlite3* db, iot_message_t rcv_msg, uint8_t* proces
     char* publihser_key_path = (char*)malloc(PATH_MAX_SIZE);
     sprintf(publihser_key_path, "%s/%s_i", SEALS_PATH, rcv_msg.pk);
 
-    if(DEBUG) printf("\nReading publisher key file: %s\n", publihser_key_path);
+    if(DEBUG_PRINT) printf("\nReading publisher key file: %s\n", publihser_key_path);
 
     FILE* publisher_key_file = fopen(publihser_key_path, "rb");
     free(publihser_key_path);
@@ -358,7 +358,7 @@ server_error_t aggregation_i(sqlite3* db, iot_message_t rcv_msg, uint8_t* proces
     char* storage_key_path = (char*)malloc(PATH_MAX_SIZE);
     sprintf(storage_key_path, "%s/storage_key_i", SEALS_PATH);
 
-    if(DEBUG) printf("\nReading storage key file: %s\n", storage_key_path);
+    if(DEBUG_PRINT) printf("\nReading storage key file: %s\n", storage_key_path);
 
     FILE* storage_key_file = fopen(storage_key_path, "rb");
     free(storage_key_path);
@@ -423,7 +423,7 @@ server_error_t aggregation(iot_message_t rcv_msg, sgx_enclave_id_t global_eid, b
     // Thread open dedicated database connection 
     sqlite3 *db;
 
-    if(DEBUG) printf("\nOpening database\n"); 
+    if(DEBUG_PRINT) printf("\nOpening database\n"); 
 
     if(sqlite3_open(DATABASE_PATH, &db)) {
         printf("SQL error: %s\n", sqlite3_errmsg(db));

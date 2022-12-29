@@ -50,7 +50,7 @@ int parse_configure_key_message(char* msg, client_identity_t* p_rcv_msg) {
 
 int get_configure_key_message(const httplib::Request& req, char* snd_msg, uint32_t* p_size)
 {
-    if(DEBUG) printf("\nGetting configure key message fields:\n");
+    if(DEBUG_PRINT) printf("\nGetting configure key message fields:\n");
 
     std::string size_field = req.matches[1].str();
 
@@ -64,14 +64,14 @@ int get_configure_key_message(const httplib::Request& req, char* snd_msg, uint32
     if(*p_size > URL_MAX_SIZE)
         return (int)print_error_message(HTTP_MESSAGE_SIZE_OVERFLOW_ERROR);
 
-    if(DEBUG) printf("Size: %u\n", *p_size);
+    if(DEBUG_PRINT) printf("Size: %u\n", *p_size);
 
     std::string message_field = req.matches[2].str();
 
     strncpy(snd_msg, message_field.c_str(), (size_t)(*p_size-1));
     snd_msg[*p_size] = '\0';
     
-    if(DEBUG) printf("Message: %s\n", snd_msg);
+    if(DEBUG_PRINT) printf("Message: %s\n", snd_msg);
 
     return OK;
 }
@@ -79,7 +79,7 @@ int get_configure_key_message(const httplib::Request& req, char* snd_msg, uint32
 int read_identity(client_identity_t* p_id) {
 
     // Search identity file and read ID and CK
-    if(DEBUG) printf("\nReading client identity key file: %s\n", CLIENT_KEY_FILENAME);
+    if(DEBUG_PRINT) printf("\nReading client identity key file: %s\n", CLIENT_KEY_FILENAME);
 
     FILE* id_file = fopen(CLIENT_KEY_FILENAME, "rb");
     if (id_file == NULL) 
@@ -115,13 +115,4 @@ int write_identity(client_identity_t id) {
     thread_sync.unlock();
     
     return 0;
-}
-
-int configure_device(client_identity_t rcv_id) {
-
-    // Write identity into a file
-    return write_identity(rcv_id);
-
-    // Register client in the server (TODO)
-
 }
