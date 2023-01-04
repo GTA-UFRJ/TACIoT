@@ -7,6 +7,8 @@
 #ifndef _ERRORS_H_
 #define _ERRORS_H_
 
+#include <string>
+
 typedef enum {
     OK,                                     // 0                 
     INIT_ERROR,                             // 1
@@ -52,6 +54,8 @@ typedef enum {
     INVALID_ENCRYPTED_RESPONSE_ERROR,       // 41
     INVALID_ERROR_CODE_FORMAT_ERROR         // 42
 } server_error_t;
+
+std::string get_error_message(server_error_t error);
 
 server_error_t print_error_message(server_error_t error);
 

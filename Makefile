@@ -163,6 +163,7 @@ Client_Cpp_Files := client/cli.cpp \
 					client/client_apnet.cpp \
 					client/client_uenet.cpp \
 					client/client_register.cpp \
+					client/client_generic_interface.cpp \
 					utils/utils.cpp \
 					utils/encryption.cpp \
 					utils/errors.cpp \
