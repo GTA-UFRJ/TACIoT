@@ -22,7 +22,13 @@ typedef struct callback_arg_t
 
 int parse_configure_perms_message(char*, default_perms_t* );
 
+int parse_read_perms_message(char*, char* );
+
 int get_configure_perms_message(const httplib::Request& , char* , uint32_t* );
+
+int get_read_perms_message(const httplib::Request& , char* , uint32_t* );
+
+int make_perms_response(char** , uint32_t , char* );
 
 int read_default_perms(sqlite3*, char*, char**, uint32_t*);
 

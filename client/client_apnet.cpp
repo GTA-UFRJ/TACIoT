@@ -22,21 +22,27 @@
 int initialize_ap_server ()
 {
     int ret = 0;
+    char return_message [3];
     
     // Access point serves http users devices
     using namespace httplib;
     Server ap_local_server;
 
     // Receive publication message from sensor
-    ap_local_server.Get(R"(/smart-meter?(\d+))", [&](const Request& req, Response& res) {
+    ap_local_server.Get(R"(/smart-meter=(\d+))", [&](const Request& req, Response& res) {
 
         if(DEBUG_PRINT) printf("\n---------------------------------------\n");
         if(DEBUG_PRINT) printf("Received update message from smart meter sensor\n");
 
         // Pick access point ID and CC
         client_identity_t id;
-        if(read_identity(&id))
-            return -1;
+        ret = read_identity(&id);
+        if(ret) {
+            sprintf(return_message, "%02d", ret);
+            res.set_content(return_message, "text/plain");
+
+            return ret;
+        }
 
         // Fill client data structure
         client_data_t data;
@@ -52,6 +58,10 @@ int initialize_ap_server ()
         sqlite3 *db;
         if(sqlite3_open(DEFAULT_PERMS_DB_PATH, &db)) {
             printf("SQL error: %s\n", sqlite3_errmsg(db));
+
+            sprintf(return_message, "%02d", (int)OPEN_DATABASE_ERROR);
+            res.set_content(return_message, "text/plain");
+
             return (int)print_error_message(OPEN_DATABASE_ERROR);
         }
         
@@ -59,8 +69,11 @@ int initialize_ap_server ()
         ret = read_default_perms(db, data.type,  data.permissions_list, &data.permissions_count);
         if(ret) {
             free_client_data(data);
-            printf("Error reading permissions from database\n");
-            return -1;
+
+            sprintf(return_message, "%02d", ret);
+            res.set_content(return_message, "text/plain");
+
+            return ret;
         }
 
         // Publish data
@@ -68,9 +81,7 @@ int initialize_ap_server ()
         free_client_data(data);
 
         // Send response
-        char return_message [3];
         sprintf(return_message, "%02d", (int)ret);
-        printf("%s\n", return_message);
         res.set_content(return_message, "text/plain");
 
         return ret;
@@ -89,6 +100,10 @@ int initialize_ap_server ()
         ret = get_configure_key_message(req, snd_msg, &size);
         if(ret) {
             free(snd_msg);
+
+            sprintf(return_message, "%02d", ret);
+            res.set_content(return_message, "text/plain");
+
             return ret;
         }
 
@@ -96,15 +111,18 @@ int initialize_ap_server ()
         client_identity_t client_id;
         ret = parse_configure_key_message(snd_msg, &client_id);
         free(snd_msg);
-        if(ret)
+        if(ret) {
+            sprintf(return_message, "%02d", ret);
+            res.set_content(return_message, "text/plain");
+
             return ret;
+        }
 
         ret = write_identity(client_id);
         printf("Configured successfully\n");
 
         // Send response
-        char return_message [3];
-        sprintf(return_message, "%02d", (int)ret);
+        sprintf(return_message, "%02d", ret);
         res.set_content(return_message, "text/plain");
 
         return ret;
@@ -123,6 +141,10 @@ int initialize_ap_server ()
         ret = get_configure_perms_message(req, snd_msg, &size);
         if(ret) {
             free(snd_msg);
+
+            sprintf(return_message, "%02d", ret);
+            res.set_content(return_message, "text/plain");
+
             return ret;
         }
 
@@ -132,32 +154,104 @@ int initialize_ap_server ()
         free(snd_msg);
         if(ret) {
             free_permissions_array(rcv_perms.permissions_list, rcv_perms.permissions_count);
+
+            sprintf(return_message, "%02d", ret);
+            res.set_content(return_message, "text/plain");
+
             return ret;
         }
-
 
         // Open deafult access permissions database
         sqlite3 *db;
 
         if(sqlite3_open(DEFAULT_PERMS_DB_PATH, &db)) {
             printf("SQL error: %s\n", sqlite3_errmsg(db));
+
+            sprintf(return_message, "%02d", (int)OPEN_DATABASE_ERROR);
+            res.set_content(return_message, "text/plain");
+
             return (int)print_error_message(OPEN_DATABASE_ERROR);
         } 
 
         // Write access permissions for type in database
         ret = write_default_perms(db, rcv_perms.type, rcv_perms.permissions_list, rcv_perms.permissions_count);
         free_permissions_array(rcv_perms.permissions_list, rcv_perms.permissions_count);
-        if(ret) {
-            printf("Error writing to database\n");
-            return -1;
-        }
 
         // Send response
-        char return_message [3];
         sprintf(return_message, "%02d", (int)ret);
         res.set_content(return_message, "text/plain");
 
         return ret;
+    });
+
+    ap_local_server.Get(R"(/read-ap-perms/size=(\d+)/(.*))", [&](const Request& req, Response& res) {
+
+        if(DEBUG_PRINT) printf("\n---------------------------------------\n");
+        if(DEBUG_PRINT) printf("Received access permissions query message from user equipament\n");
+
+        // Get message sent in HTTP header
+        char* snd_msg = (char*)malloc(URL_MAX_SIZE);
+
+        uint32_t size;
+        ret = get_read_perms_message(req, snd_msg, &size);
+        if(ret) {
+            free(snd_msg);
+
+            sprintf(return_message, "%02d", (int)ret);
+            res.set_content(return_message, "text/plain");
+
+            return ret;
+        }
+
+        // Parse request
+        char type[7];
+        ret = parse_read_perms_message(snd_msg, type);
+        free(snd_msg);
+        if(ret) {
+            sprintf(return_message, "%02d", (int)ret);
+            res.set_content(return_message, "text/plain");
+
+            return ret;
+        }
+
+        // Open deafult access permissions database
+        sqlite3 *db;
+
+        if(sqlite3_open(DEFAULT_PERMS_DB_PATH, &db)) {
+            printf("SQL error: %s\n", sqlite3_errmsg(db));
+
+            sprintf(return_message, "%02d", (int)OPEN_DATABASE_ERROR);
+            res.set_content(return_message, "text/plain");
+
+            return (int)print_error_message(OPEN_DATABASE_ERROR);
+        } 
+
+        // Write access permissions for type in database
+        char** permissions = (char**)malloc(MAX_NUM_PERMISSIONS*sizeof(char*));
+        uint32_t permissions_count;
+        ret = read_default_perms(db, type, permissions, &permissions_count);
+        if(ret) {
+            free_permissions_array(permissions, permissions_count);
+
+            sprintf(return_message, "%02d", (int)ret);
+            res.set_content(return_message, "text/plain");
+
+            return ret;
+        }
+
+        char* response = (char*)malloc(permissions_count*9);
+        ret = make_perms_response(permissions, permissions_count, response);
+        free_permissions_array(permissions, permissions_count);
+        if(ret) {
+            sprintf(return_message, "%02d", (int)ret);
+            res.set_content(return_message, "text/plain");
+            
+            return ret;
+        }
+
+        // Send response
+        res.set_content(response, "text/plain");
+        return 0;
     });
 
     ap_local_server.listen(AP_URL, AP_PORT);

@@ -33,7 +33,7 @@
 #endif
 
 #ifndef SERVER_PORT
-#define SERVER_PORT 8080
+#define SERVER_PORT 5555
 #endif
 
 #ifndef HTTPLIB_PATH
@@ -169,9 +169,13 @@
 #endif
 
 #ifndef AP_PORT
-#define AP_PORT 50000
+#define AP_PORT 8080
 #endif
 
 #ifndef MAX_ARG_SIZE
-#define MAX_ARG_SIZE 128
+#define MAX_ARG_SIZE 256
+#endif
+
+#ifndef MAX_NUM_ARGS
+#define MAX_NUM_ARGS 16
 #endif

@@ -30,10 +30,5 @@ typedef struct default_perms {
     char** permissions_list;
 } default_perms_t;
 
-void free_permissions_array(char**, uint32_t);
-
-void print_usage();
-
-void free_client_data(client_data_t );
 
 #endif

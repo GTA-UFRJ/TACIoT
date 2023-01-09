@@ -62,7 +62,50 @@ int send_register_ap_message(client_identity_t id) {
     return 0;
 }
 
-int send_ap_perms_message(default_perms_t perms) {
+int send_read_ap_perms_message(char* type, char* perms) {
+
+    // Build message
+    // type|123456
+    uint32_t formatted_data_size = 5+6;
+    char* formatted_data = (char*)malloc(formatted_data_size+1);
+    sprintf(formatted_data,"type|%s", type);
+
+    // Build HTTP permissions message
+    char* http_message = (char*)malloc(URL_MAX_SIZE);
+    sprintf(http_message, "/read-ap-perms/size=%d/%s", formatted_data_size+1, formatted_data);
+    free(formatted_data);
+
+
+    // Send HTTP permissions message
+    httplib::Error err = httplib::Error::Success;
+    httplib::Client cli(AP_URL, AP_PORT);
+
+    printf("Sent %s\n", http_message);
+    auto res = cli.Get(http_message);
+    free(http_message);
+    if (res) {
+        
+        if (res->status != 200) {
+            printf("Error code: %d\n", (int)res->status);
+            return (int)print_error_message(HTTP_RESPONSE_ERROR);
+        }
+
+        for(unsigned i=0; i < (res->body).length(); i++)
+            perms[i] = ( (res->body)[i] == ',' ? ' ' : (res->body)[i]);
+        perms[(res->body).length()] = '\0';
+
+    } else {
+        err = res.error();
+        printf("Error %d\n", (int)err);
+        return (int)print_error_message(HTTP_SEND_ERROR);
+    }
+
+
+
+    return 0;
+}
+
+int send_write_ap_perms_message(default_perms_t perms) {
 
     // Build message
     // type|123456|permission1|72d41281|...
@@ -78,11 +121,10 @@ int send_ap_perms_message(default_perms_t perms) {
     free(permission);
     printf("%s\n", formatted_data);
 
-    // Build HTTP publication message
+    // Build HTTP permissions message
     char* http_message = (char*)malloc(URL_MAX_SIZE);
     sprintf(http_message, "/configure-ap-perms/size=%d/%s", formatted_data_size+1, formatted_data);
     free(formatted_data);
-
 
     // Send HTTP permissions message
     httplib::Error err = httplib::Error::Success;

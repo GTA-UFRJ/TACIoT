@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include "sample_libcrypto.h"
+#include "cli.h"
 
 #ifndef _UTILS_H_
 #define _UTILS_H_
@@ -25,6 +26,8 @@ typedef int errno_t;
 #define SAFE_FREE(ptr) {if (NULL != (ptr)) {free(ptr); (ptr) = NULL;}}
 #endif
 
+void free_client_data(client_data_t );
+
 errno_t memcpy_s(void *dest, size_t numberOfElements, const void *src,
                  size_t count);
 
@@ -35,5 +38,7 @@ void debug_print_encrypted(size_t , uint8_t* );
 void free_data_array(char** , uint32_t* , uint32_t );
 
 bool verify_file_existance(char* );
+
+void free_permissions_array(char**, uint32_t);
 
 #endif // _UTILS_H_

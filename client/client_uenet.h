@@ -12,6 +12,8 @@
 
 int send_register_ap_message(client_identity_t );
 
-int send_ap_perms_message(default_perms_t );
+int send_read_ap_perms_message(char*, char*);
+
+int send_write_ap_perms_message(default_perms_t );
 
 #endif

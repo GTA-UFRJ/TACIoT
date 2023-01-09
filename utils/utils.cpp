@@ -15,6 +15,15 @@
 #include "sample_libcrypto.h"
 #include "config_macros.h"
 #include <unistd.h>
+#include "cli.h"
+
+
+void free_client_data(client_data_t data) {
+    free(data.payload);
+    for(unsigned i=0; i<data.permissions_count; i++)
+        free(data.permissions_list[i]);
+    free(data.permissions_list);
+}
 
 errno_t memcpy_s(
     void *dest,
@@ -69,4 +78,12 @@ void free_data_array(char** datas, uint32_t* datas_sizes, uint32_t data_count) {
 
 bool verify_file_existance(char* filename) {
     return ( access(filename, F_OK) != -1 ? true : false );
+}
+
+
+
+void free_permissions_array(char** permissions_list, uint32_t permissions_count) {
+    for(unsigned i = 0; i < permissions_count; i++)
+        free(permissions_list[i]);
+    free(permissions_list);
 }

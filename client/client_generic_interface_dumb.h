@@ -11,15 +11,14 @@
 #include <string>
 
 // Overloaded alternatives
-int publish_interface(std::string, std::string, std::string);
+int publish_interface(std::string, std::string, std::string, bool);
 int query_interface(uint32_t, std::string, std::string*);
 //revoke
 int read_perm_interface(std::string, std::string *);
-int read_perms_interface();
 int write_perm_interface(std::string, std::string);
 int register_interface(std::string, std::string);
 int register_ap_interface(std::string, std::string);
-int read_ap_perms_interface(std::string* );
+int read_ap_perm_interface(std::string, std::string*);
 int write_ap_perm_interface(std::string, std::string);
 //ap_init
 

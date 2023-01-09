@@ -54,7 +54,7 @@ static int callback_perms(void* received_from_exec, int , char** columns_values,
 // type|123456|permission1|72d41281|...
 int parse_configure_perms_message(char* msg, default_perms_t* p_rcv_perms) {
 
-    if(DEBUG_PRINT) printf("\nParsing publication message fields\n");
+    if(DEBUG_PRINT) printf("\nParsing configure ap perms message fields\n");
     
     int permission_count = 0;
     p_rcv_perms->permissions_list = (char**)malloc(MAX_NUM_PERMISSIONS*sizeof(char*));
@@ -86,6 +86,21 @@ int parse_configure_perms_message(char* msg, default_perms_t* p_rcv_perms) {
     return 0;
 }
 
+// type|123456
+int parse_read_perms_message(char* msg, char* type) {
+
+    if(DEBUG_PRINT) printf("\nParsing read ap perms message fields\n");
+
+    char* token = strtok_r(msg, "|", &msg);
+    token = strtok_r(NULL, "|", &msg);
+
+    memcpy(type, token, 6);
+    type[6] = '\0';
+    if(DEBUG_PRINT) printf("type: %s\n", type);
+
+    return 0;
+}
+
 int get_configure_perms_message(const httplib::Request& req, char* snd_msg, uint32_t* p_size) {
 
     if(DEBUG_PRINT) printf("\nGetting configure access permissions message fields:\n");
@@ -112,6 +127,42 @@ int get_configure_perms_message(const httplib::Request& req, char* snd_msg, uint
     if(DEBUG_PRINT) printf("Message: %s\n", snd_msg);
 
     return OK;
+}
+
+
+int get_read_perms_message(const httplib::Request& req, char* snd_msg, uint32_t* p_size) {
+
+    if(DEBUG_PRINT) printf("\nGetting read access permissions message fields:\n");
+
+    std::string size_field = req.matches[1].str();
+
+    try {
+        *p_size = (uint32_t)std::stoul(size_field);
+    }
+    catch (std::invalid_argument& exception) {
+        return (int)print_error_message(INVALID_HTTP_MESSAGE_SIZE_FIELD_ERROR);
+    }
+
+    if(*p_size > URL_MAX_SIZE)
+        return (int)print_error_message(HTTP_MESSAGE_SIZE_OVERFLOW_ERROR);
+
+    if(DEBUG_PRINT) printf("Size: %u\n", *p_size);
+
+    std::string message_field = req.matches[2].str();
+
+    strncpy(snd_msg, message_field.c_str(), (size_t)(*p_size-1));
+    snd_msg[*p_size] = '\0';
+    
+    if(DEBUG_PRINT) printf("Message: %s\n", snd_msg);
+
+    return OK;
+}
+
+int make_perms_response(char** permissions, uint32_t permissions_count, char* response) {
+    response[0] = 0;
+    for(unsigned i=0; i<permissions_count; i++)
+        sprintf(response+strlen(response), "%s,", permissions[i]);
+    return 0;
 }
 
 int read_default_perms(sqlite3* db, char* type, char** permissions_list, uint32_t* permissions_count) {
